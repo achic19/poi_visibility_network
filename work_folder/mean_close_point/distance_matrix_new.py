@@ -1,6 +1,8 @@
 import sys
+import os
 from qgis.core import *
 print(sys.path)
+print(os.environ['PATH'])
 QgsApplication.setPrefixPath(r'C:\Program Files\QGIS 3.0\apps\qgis', True)
 qgs = QgsApplication([], True)
 
