@@ -5,12 +5,88 @@ from qgis.analysis import QgsNativeAlgorithms
 from qgis.core import *
 
 # Tell Python where you will get processing from
+
+
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.4\apps\qgis-ltr\python\plugins')
 # Reference the algorithm you want to run
 from plugins import processing
 from plugins.processing.algs.qgis.DeleteDuplicateGeometries import *
 from plugins.processing.algs.qgis.PointDistance import *
+
+# This 2 following defs intend to calculate distance matrix with point to herself
+
+def linearMatrix(self, parameters, context, source, inField, target_source, targetField,
+                 nPoints, feedback):
+    inIdx = source.fields().lookupField(inField)
+    outIdx = target_source.fields().lookupField(targetField)
+
+    fields = QgsFields()
+    input_id_field = source.fields()[inIdx]
+    input_id_field.setName('InputID')
+    fields.append(input_id_field)
+
+    target_id_field = target_source.fields()[outIdx]
+    target_id_field.setName('TargetID')
+    fields.append(target_id_field)
+    fields.append(QgsField('Distance', QVariant.Double))
+
+    out_wkb = QgsWkbTypes.multiType(source.wkbType())
+    (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
+                                           fields, out_wkb, source.sourceCrs())
+
+    index = QgsSpatialIndex(target_source.getFeatures(
+        QgsFeatureRequest().setSubsetOfAttributes([]).setDestinationCrs(source.sourceCrs(),
+                                                                        context.transformContext())), feedback)
+
+    distArea = QgsDistanceArea()
+    distArea.setSourceCrs(source.sourceCrs(), context.transformContext())
+    distArea.setEllipsoid(context.project().ellipsoid())
+
+    features = source.getFeatures(QgsFeatureRequest().setSubsetOfAttributes([inIdx]))
+    total = 100.0 / source.featureCount() if source.featureCount() else 0
+    for current, inFeat in enumerate(features):
+        if feedback.isCanceled():
+            break
+
+        inGeom = inFeat.geometry()
+        inID = str(inFeat.attributes()[inIdx])
+        featList = index.nearestNeighbor(inGeom.asPoint(), nPoints)
+        request = QgsFeatureRequest().setFilterFids(featList).setSubsetOfAttributes([outIdx]).setDestinationCrs(
+            source.sourceCrs(), context.transformContext())
+        for outFeat in target_source.getFeatures(request):
+            if feedback.isCanceled():
+                break
+
+            outID = outFeat.attributes()[outIdx]
+            outGeom = outFeat.geometry()
+            dist = distArea.measureLine(inGeom.asPoint(),
+                                        outGeom.asPoint())
+
+            out_feature = QgsFeature()
+            out_geom = QgsGeometry.unaryUnion([inFeat.geometry(), outFeat.geometry()])
+            out_feature.setGeometry(out_geom)
+            out_feature.setAttributes([inID, outID, dist])
+            sink.addFeature(out_feature, QgsFeatureSink.FastInsert)
+
+        feedback.setProgress(int(current * total))
+
+    return {self.OUTPUT: dest_id}
+
+
+def processAlgorithm(self, parameters, context, feedback):
+    source = self.parameterAsSource(parameters, self.INPUT, context)
+    source_field = self.parameterAsString(parameters, self.INPUT_FIELD, context)
+    target_source = self.parameterAsSource(parameters, self.TARGET, context)
+    target_field = self.parameterAsString(parameters, self.TARGET_FIELD, context)
+    nPoints = self.parameterAsInt(parameters, self.NEAREST_POINTS, context)
+
+    if nPoints < 1:
+        nPoints = target_source.featureCount()
+
+    # Linear distance matrix
+    return linearMatrix(self, parameters, context, source, source_field, target_source, target_field,
+                        nPoints, feedback)
 
 
 class MeanClosePoint:
@@ -61,7 +137,7 @@ class MeanClosePoint:
             project.setCrs(target_crs)
             context = QgsProcessingContext()
             context.setProject(project)
-            alg.processAlgorithm(params, context, feedback=feedback)
+            processAlgorithm(alg,params, context, feedback=feedback)
             print("distance matrix success")
 
         except:
@@ -137,3 +213,5 @@ class MeanClosePoint:
         if not layer:
             return ("Layer failed to load!-" + path)
         return layer
+
+

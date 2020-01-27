@@ -26,7 +26,8 @@ import sys
 from .resources import *
 from qgis.PyQt.QtCore import QSettings, QTranslator
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
-
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 
