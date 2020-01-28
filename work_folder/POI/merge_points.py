@@ -38,7 +38,7 @@ class MergePoint:
         # Clip to project only POI in polygons
         try:
             time_1 = time.time()
-            processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [6],
+            processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [0],
                                                         'INTERSECT':overlay , 'OUTPUT':output_clip}, feedback=feedback)
             self.stat['clip'] = time.time() - time_1
         except:
@@ -62,7 +62,7 @@ class MergePoint:
             alg = PointsAlongGeometry()
             alg.initAlgorithm()
             context = QgsProcessingContext()
-            params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'), 'DISTANCE': 10, 'START_OFFSET': 0, 'END_OFFSET': 0,
+            params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'), 'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
                       'OUTPUT': output__along_geometry}
             alg.processAlgorithm(params, context, feedback=feedback)
             self.stat['PointsAlongGeometry'] = time.time() - time_1
@@ -102,7 +102,7 @@ class MergePoint:
             constrains = overlay
             buffer = os.path.join(os.path.dirname(__file__), "results_file/buffer.shp")
 
-            params = {'INPUT': constrains, 'DISTANCE': 2, 'SEGMENTS': 1, 'END_CAP_STYLE': 2,
+            params = {'INPUT': constrains, 'DISTANCE': 1, 'SEGMENTS': 1, 'END_CAP_STYLE': 2,
                       'JOIN_STYLE': 1, 'MITER_LIMIT': 2,
                       'DISSOLVE': True, 'OUTPUT': buffer}
 

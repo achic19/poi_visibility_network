@@ -218,6 +218,7 @@ class PoiVisibilityNetwork:
         self.dlg.comboBox_3.setEnabled(False)
         self.graph_to_draw = 2
 
+
     def select_poi_graph(self):
 
         self.dlg.comboBox_3.setEnabled(True)
