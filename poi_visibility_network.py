@@ -23,17 +23,17 @@
 """
 import os.path
 import sys
-from .resources import *
-from qgis.PyQt.QtCore import QSettings, QTranslator
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
+
 from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-# Initialize Qt resources from file resources.py
-# Import the code for the dialog
+from qgis.PyQt.QtWidgets import QAction, QFileDialog
 
 # Import my code
 # Tell Python where you get processing from
 from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
+
+# Initialize Qt resources from file resources.py
+from .resources import *
+# Import the code for the dialog
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -83,7 +83,7 @@ class PoiVisibilityNetwork:
         self.first_start = None
 
         # Specific code for this plugin
-        self.graph_to_draw = 1
+        self.graph_to_draw = 'ivg'
         self.dlg.pushButton.clicked.connect(self.select_output_folder)
         self.dlg.radioButton_4.toggled.connect(self.select_ivg_graph)
         self.dlg.radioButton_5.toggled.connect(self.select_snvg_graph)
@@ -216,17 +216,19 @@ class PoiVisibilityNetwork:
     def select_snvg_graph(self):
 
         self.dlg.comboBox_3.setEnabled(False)
-        self.graph_to_draw = 2
-
+        self.graph_to_draw = 'snvg'
+        # 2
 
     def select_poi_graph(self):
 
         self.dlg.comboBox_3.setEnabled(True)
-        self.graph_to_draw = 3
+        self.graph_to_draw = 'poi'
+        # 3
 
     def select_ivg_graph(self):
         self.dlg.comboBox_3.setEnabled(True)
-        self.graph_to_draw = 1
+        self.graph_to_draw = 'ivg'
+        # 1
 
     def papulate_comboList(self, geometry_type):
         '''
@@ -302,7 +304,7 @@ class PoiVisibilityNetwork:
 
         poi_temp = None
         poi = None
-        if self.graph_to_draw in [1, 3]:
+        if self.graph_to_draw in ['ivg', 'poi']:
             # Identify Point Of Interest layer by its index and get his path
             selectedLayerIndex_3 = self.dlg.comboBox_3.currentIndex()
             poi = poi_list[selectedLayerIndex_3]
@@ -358,7 +360,7 @@ class PoiVisibilityNetwork:
         import time
         # In case of constrain as polyline file and network involve POI, the polyline file should convert to
         # to polygon file
-        if constrains_gis.geometryType() == 1 and self.graph_to_draw in [1, 3]:
+        if constrains_gis.geometryType() == 1 and self.graph_to_draw in ['ivg', 'poi']:
             feedback = QgsProcessingFeedback()
             output = os.path.join(os.path.dirname(__file__), r'work_folder/input/building_1.shp')
             alg = LinesToPolygons()
@@ -406,7 +408,7 @@ class PoiVisibilityNetwork:
             self.iface.messageBar().pushMessage('Create sight_line instance failed', level=Qgis.Info)
 
         # Don't run in case of POI graph
-        if self.graph_to_draw in [1, 2]:
+        if self.graph_to_draw in ['ivg', 'snvg']:
             try:
                 # Find intersections
                 time_1 = time.time()
@@ -437,7 +439,7 @@ class PoiVisibilityNetwork:
 
         try:
             time_1 = time.time()
-            if self.graph_to_draw in [1, 3]:
+            if self.graph_to_draw in ['ivg', 'poi']:
                 # Merge all the visibility POI's and intersections
                 #  to one file and project POI points outside polygons ,
                 # Finish with final.shp
@@ -447,7 +449,7 @@ class PoiVisibilityNetwork:
                     result, poi_path = SightLine.centerlized()
                     self.iface.messageBar().pushMessage(result, level=Qgis.Info)
 
-                if self.graph_to_draw == 3:
+                if self.graph_to_draw ==  'poi':
                     mp = MergePoint(poi_path)
                 else:
                     mp = MergePoint(poi_path, graph_type=1)
@@ -479,7 +481,7 @@ class PoiVisibilityNetwork:
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
         time_1 = time.time()
         result = my_sight_line.create_gdf_file(weight=weight, restricted=restricted
-                                               , restricted_length=restricted_length)
+                                               , restricted_length=restricted_length, graph_name=self.graph_to_draw)
         time_interval = str(time.time() - time_1)
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
@@ -498,7 +500,7 @@ class PoiVisibilityNetwork:
         self.iface.addVectorLayer(sight_line, " ", "ogr")
 
         # Update symbology for the layers being upload to Qgis project
-        if self.graph_to_draw == 1:
+        if self.graph_to_draw == 'ivg':
 
             # define some rules: label, expression, symbol
             symbol_rules = (
@@ -527,13 +529,13 @@ class PoiVisibilityNetwork:
             # delete the default rule
             root_rule.removeChildAt(0)
 
-        if self.graph_to_draw == 2:
+        if self.graph_to_draw == 'snvg':
             symbol_1 = QgsMarkerSymbol.createSimple({'size': '2.0',
                                                      'color': 'blue'})
 
             renderer = QgsSingleSymbolRenderer(symbol_1)
 
-        elif self.graph_to_draw == 3:
+        elif self.graph_to_draw == 'poi':
             symbol_1 = QgsMarkerSymbol.createSimple({'size': '4.0',
                                                      'color': 'red'})
 

@@ -186,16 +186,18 @@ class SightLine:
         except:
             return ("Find sight line failed")
 
-    def create_gdf_file(self, weight, restricted, restricted_length):
+    def create_gdf_file(self, weight, restricted, restricted_length, graph_name):
         '''
 
         :param weight: 0 all sight lines with same weight 1 all sight lines with weight based on their length
+        :param graph_name: for the name of the generated gdf file
         :return:
         '''
         """create gdf file"""
         try:
             # Open text file as gdf file
-            file1 = open(self.res_folder + '/GDFFile.gdf', "w")
+            file_path = os.path.join(self.res_folder, graph_name + '.gdf')
+            file1 = open(file_path , "w")
             # Write intersection nodes to file
             title = "nodedef>name VARCHAR,x DOUBLE,y DOUBLE,size DOUBLE"
             file1.write(title)
