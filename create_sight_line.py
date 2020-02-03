@@ -132,9 +132,11 @@ class SightLine:
         except:
             print("delete_duplicate_geometries is failed")
 
-    def create_sight_lines_pot(self, final):
+    def create_sight_lines_pot(self,final, restricted, restricted_length):
         '''
 
+        :param restricted_length: What is the max permitted distance
+        :param restricted: is a restricted length is checked or not
         :param final: layer of points to calculate sight of lines
         :return: success or fail massage
         '''
@@ -160,7 +162,19 @@ class SightLine:
                 for j in range(i + 1, len(python_geo)):
                     # Add geometry to lines' features  - the nodes of each line
                     feat = QgsFeature()
-                    gLine = QgsGeometry.fromPolylineXY([feature.asPoint(), python_geo[j].asPoint()])
+                    point1 = feature.asPoint()
+                    point2 = python_geo[j].asPoint()
+                    # in case of restricted weight, check if the current disstance between two points is larger than
+                    # allowed
+                    if restricted:
+                        # Create a measure object
+                        distance = QgsDistanceArea()
+
+                        # Measure the distance
+                        m = distance.measureLine(point1, point2)
+                        if m > restricted_length:
+                            continue
+                    gLine = QgsGeometry.fromPolylineXY([point1, point2])
                     feat.setGeometry(gLine)
                     # Add  the nodes id as attributes to lines' features
                     feat.setFields(fields)
@@ -186,7 +200,7 @@ class SightLine:
         except:
             return ("Find sight line failed")
 
-    def create_gdf_file(self, weight, restricted, restricted_length, graph_name):
+    def create_gdf_file(self, weight, graph_name):
         '''
 
         :param weight: 0 all sight lines with same weight 1 all sight lines with weight based on their length
@@ -197,7 +211,7 @@ class SightLine:
         try:
             # Open text file as gdf file
             file_path = os.path.join(self.res_folder, graph_name + '.gdf')
-            file1 = open(file_path , "w")
+            file1 = open(file_path, "w")
             # Write intersection nodes to file
             title = "nodedef>name VARCHAR,x DOUBLE,y DOUBLE,size DOUBLE"
             file1.write(title)
@@ -227,18 +241,18 @@ class SightLine:
                 geom_length = f.geometry().length()
                 self.layers[1].dataProvider().changeAttributeValues({i: {n - 2: geom_length}})
                 if weight:
-                    if restricted:
-                        i = self.restricted_calculation(geom_length, restricted_length, i, n,
-                                                        1 / mt.pow(geom_length, 2) * 10000)
-                    else:
-                        self.weight_calculation(i, n, 1 / mt.pow(geom_length, 2) * 10000)
-                        i = i + 1
+                    # if restricted:
+                    #     i = self.restricted_calculation(geom_length, restricted_length, i, n,
+                    #                                     1 / mt.pow(geom_length, 2) * 10000)
+                    # else:
+                    self.weight_calculation(i, n, 1 / mt.pow(geom_length, 2) * 10000)
+                    i = i + 1
                 else:
-                    if restricted:
-                        i = self.restricted_calculation(geom_length, restricted_length, i, n, 1)
-                    else:
-                        self.weight_calculation(i, n, 1)
-                        i = i + 1
+                    # if restricted:
+                    #     i = self.restricted_calculation(geom_length, restricted_length, i, n, 1)
+                    # else:
+                    self.weight_calculation(i, n, 1)
+                    i = i + 1
 
             # Write title
             file1.write("\nedgedef>node1 VARCHAR,node2 VARCHAR,weight DOUBLE\n")
@@ -252,13 +266,13 @@ class SightLine:
         except:
             return ("create_gdf_file failed")
 
-    def restricted_calculation(self, geom_length, restricted_length, i, n, weight):
-        if geom_length > restricted_length:
-            self.layers[1].dataProvider().deleteFeatures([i])
-            return i
-        else:
-            self.weight_calculation(i, n, weight)
-            return i + 1
+    # def restricted_calculation(self, geom_length, restricted_length, i, n, weight):
+    #     if geom_length > restricted_length:
+    #         self.layers[1].dataProvider().deleteFeatures([i])
+    #         return i
+    #     else:
+    #         self.weight_calculation(i, n, weight)
+    #         return i + 1
 
     def weight_calculation(self, i, n, weight):
         self.layers[1].dataProvider().changeAttributeValues({i: {n - 1: weight}})

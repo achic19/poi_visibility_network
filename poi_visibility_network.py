@@ -470,7 +470,8 @@ class PoiVisibilityNetwork:
         # Calc sight lines
 
         time_1 = time.time()
-        result = my_sight_line.create_sight_lines_pot(final)
+        result = my_sight_line.create_sight_lines_pot(final,restricted=restricted
+                                               , restricted_length=restricted_length)
         time_interval = str(time.time() - time_1)
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
@@ -480,8 +481,7 @@ class PoiVisibilityNetwork:
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
         time_1 = time.time()
-        result = my_sight_line.create_gdf_file(weight=weight, restricted=restricted
-                                               , restricted_length=restricted_length, graph_name=self.graph_to_draw)
+        result = my_sight_line.create_gdf_file(weight=weight, graph_name=self.graph_to_draw)
         time_interval = str(time.time() - time_1)
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
