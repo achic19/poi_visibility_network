@@ -1,6 +1,5 @@
-
-import sys
 import os
+import sys
 
 from qgis.core import (QgsProcessingContext,
                        QgsProject,
@@ -19,6 +18,7 @@ from plugins.processing.algs.qgis.HubDistanceLines import HubDistanceLines
 from plugins.processing.algs.qgis.PolygonsToLines import PolygonsToLines
 from plugins.processing.algs.qgis.DeleteDuplicateGeometries import DeleteDuplicateGeometries
 import time
+
 
 class MergePoint:
     def __init__(self, poi_path, graph_type=0):
@@ -39,7 +39,7 @@ class MergePoint:
         try:
             time_1 = time.time()
             processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [0],
-                                                        'INTERSECT':overlay , 'OUTPUT':output_clip}, feedback=feedback)
+                                                        'INTERSECT': overlay, 'OUTPUT': output_clip}, feedback=feedback)
             self.stat['clip'] = time.time() - time_1
         except:
             self.message = "clip failed"
@@ -48,8 +48,8 @@ class MergePoint:
         try:
             ######### Create shp file with POI not inside polygons
             time_1 = time.time()
-            processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [2], 'INTERSECT':os.path.join(
-                os.path.split( os.path.dirname(__file__))[0], r'general\constrains.shp'), 'OUTPUT': os.path.join(
+            processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [2], 'INTERSECT': os.path.join(
+                os.path.split(os.path.dirname(__file__))[0], r'general\constrains.shp'), 'OUTPUT': os.path.join(
                 os.path.dirname(__file__), r'results_file\extracted.shp')}, feedback=feedback)
             self.stat['extractbylocation'] = time.time() - time_1
         except:
@@ -62,7 +62,8 @@ class MergePoint:
             alg = PointsAlongGeometry()
             alg.initAlgorithm()
             context = QgsProcessingContext()
-            params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'), 'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
+            params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'),
+                      'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
                       'OUTPUT': output__along_geometry}
             alg.processAlgorithm(params, context, feedback=feedback)
             self.stat['PointsAlongGeometry'] = time.time() - time_1
@@ -91,7 +92,7 @@ class MergePoint:
             context.setProject(project)
             params = {'INPUT': input_clip, 'HUBS': hubs, 'FIELD': 'angle', 'UNIT': 4, 'OUTPUT': output_hub_dis_line}
             alg.processAlgorithm(params, context, feedback=feedback)
-            self.stat['HubDistanceLines'] = time.time()- time_1
+            self.stat['HubDistanceLines'] = time.time() - time_1
         except:
             self.message = "HubDistanceLines failed"
             return

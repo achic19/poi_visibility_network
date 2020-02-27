@@ -449,7 +449,7 @@ class PoiVisibilityNetwork:
                     result, poi_path = SightLine.centerlized()
                     self.iface.messageBar().pushMessage(result, level=Qgis.Info)
 
-                if self.graph_to_draw ==  'poi':
+                if self.graph_to_draw == 'poi':
                     mp = MergePoint(poi_path)
                 else:
                     mp = MergePoint(poi_path, graph_type=1)
@@ -480,22 +480,49 @@ class PoiVisibilityNetwork:
         time_interval = str(time.time() - time_1)
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-        time_1 = time.time()
-        result = my_sight_line.create_gdf_file(weight=weight, graph_name=self.graph_to_draw)
-        time_interval = str(time.time() - time_1)
-        massage = ''.join((result, ':', time_interval))
-        self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
 
         # Some operation should be made for the displayed files
-        sight_line = os.path.join(os.path.dirname(__file__), r'work_folder\general\sight_line_no_pr.shp')
-
         # Projection back to the src source
+        sight_line = os.path.join(os.path.dirname(__file__), r'work_folder\general\sight_line_no_pr.shp')
         SightLine.reproject([final, sight_line], constrains_gis.crs().authid(), ['sight_node', 'sight_line'],
                             res_folder)
 
-        # Add sight lines and node to project
+        # Add  new fields that store information about points type and id point
         path_node = os.path.join(res_folder, 'sight_node.shp')
         sight_line = os.path.join(res_folder, 'sight_line.shp')
+        nodes = QgsVectorLayer(
+            path_node,
+            "nodes",
+            "ogr")
+        if nodes.fields()[len(nodes.fields()) - 1].name() != 'point_id':
+            nodes.dataProvider().addAttributes([QgsField('poi_type', QVariant.String),QgsField('point_id', QVariant.Int)])
+            nodes.updateFields()
+        n = len(nodes.fields())
+        for i, feature in enumerate(nodes.getFeatures()):
+            nodes.dataProvider().changeAttributeValues({i: {n - 1: i}})
+
+        if self.graph_to_draw == 'ivg':
+            for i, feature in enumerate(nodes.getFeatures()):
+                if str(feature['InputID']) is 'NULL':
+                    nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
+                else:
+                    nodes.dataProvider().changeAttributeValues({i: {n - 2: 'intersection'}})
+        if self.graph_to_draw == 'snvg':
+            for i, feature in enumerate(nodes.getFeatures()):
+                nodes.dataProvider().changeAttributeValues({i: {n - 2: 'intersection'}})
+        elif self.graph_to_draw == 'poi':
+            for i, feature in enumerate(nodes.getFeatures()):
+                nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
+
+
+        # create gdf file
+        my_sight_line.layers[0] = nodes
+        my_sight_line.create_gdf_file(weight=weight, graph_name=self.graph_to_draw)
+
+
+        # Add sight lines and node to project
+
+
         layer = self.iface.addVectorLayer(path_node, " ", "ogr")
         self.iface.addVectorLayer(sight_line, " ", "ogr")
 
@@ -542,3 +569,4 @@ class PoiVisibilityNetwork:
             renderer = QgsSingleSymbolRenderer(symbol_1)
         # apply the renderer to the layer
         layer.setRenderer(renderer)
+

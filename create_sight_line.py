@@ -219,7 +219,7 @@ class SightLine:
             # lambda x: x.geometry(), nodes_features
             for i, feature in enumerate(nodes_features):
                 file1.write('\n')
-                file1.write('"' + str(i) + '"' + ',' + '"' +
+                file1.write('"' + str(feature['point_id']) + '"' + ',' + '"' +
                             str(feature.geometry().asPoint()[0]) + '"' + ',' + '"' + str(
                     feature.geometry().asPoint()[1]) + '"' +
                             ',' + '"10"')

@@ -50,7 +50,7 @@
      <item>
       <widget class="QRadioButton" name="radioButton_6">
        <property name="text">
-        <string>Point of Interest Visibility Graph (POI)</string>
+        <string>Point of Interest Visibility Graph (POIVG)</string>
        </property>
        <property name="checked">
         <bool>false</bool>
