@@ -5,7 +5,8 @@ from qgis.core import (QgsProcessingContext,
                        QgsProject,
                        QgsCoordinateReferenceSystem,
                        QgsProcessingFeedback,
-                       QgsVectorLayer)
+                       QgsVectorLayer,
+                       Qgis)
 
 # Tell Python where you will get processing from
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
@@ -59,14 +60,16 @@ class MergePoint:
         ######### Point along geometry of network file
         try:
             time_1 = time.time()
-            alg = PointsAlongGeometry()
-            alg.initAlgorithm()
-            context = QgsProcessingContext()
-            params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'),
-                      'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
-                      'OUTPUT': output__along_geometry}
-            alg.processAlgorithm(params, context, feedback=feedback)
-            self.stat['PointsAlongGeometry'] = time.time() - time_1
+            # the next lines is in order to perform different algorithms according the QGIS version
+            if Qgis.QGIS_VERSION.split('-')[0] < 3.10:
+                alg = PointsAlongGeometry()
+                alg.initAlgorithm()
+                context = QgsProcessingContext()
+                params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'),
+                          'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
+                          'OUTPUT': output__along_geometry}
+                alg.processAlgorithm(params, context, feedback=feedback)
+                self.stat['PointsAlongGeometry'] = time.time() - time_1
         except:
             self.message = "PointsAlongGeometry failed"
             return
