@@ -11,12 +11,12 @@ from qgis.core import (QgsProcessingContext,
 # Tell Python where you will get processing from
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.4\apps\qgis-ltr\python\plugins')
+sys.path.append(r'C:\Program Files\QGIS 3.10\apps\qgis-ltr\python\plugins')
 # Reference the algorithm you want to run
 from plugins import processing
 # Reference the algorithm you want to run
-from plugins.processing.algs.qgis.PointsAlongGeometry import PointsAlongGeometry
+
 from plugins.processing.algs.qgis.HubDistanceLines import HubDistanceLines
-from plugins.processing.algs.qgis.PolygonsToLines import PolygonsToLines
 from plugins.processing.algs.qgis.DeleteDuplicateGeometries import DeleteDuplicateGeometries
 import time
 
@@ -36,6 +36,8 @@ class MergePoint:
         output_clip = os.path.join(os.path.dirname(__file__), r'results_file/cliped.shp')
         output__along_geometry = os.path.join(os.path.dirname(__file__), r'results_file\points_along.shp')
         self.stat = dict()
+        # this parameter is in order to perform different algorithms according the QGIS version
+        inty = int(Qgis.QGIS_VERSION.split('-')[0].split('.')[1])
         # Clip to project only POI in polygons
         try:
             time_1 = time.time()
@@ -59,19 +61,24 @@ class MergePoint:
 
         ######### Point along geometry of network file
         try:
+
             time_1 = time.time()
-            # the next lines is in order to perform different algorithms according the QGIS version
-            if Qgis.QGIS_VERSION.split('-')[0] < 3.10:
+            params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'),
+                      'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
+                      'OUTPUT': output__along_geometry}
+
+            # different implementation among QGIS versions
+            if inty < 10:
+                from plugins.processing.algs.qgis.PointsAlongGeometry import PointsAlongGeometry
                 alg = PointsAlongGeometry()
                 alg.initAlgorithm()
                 context = QgsProcessingContext()
-                params = {'INPUT': os.path.join(os.path.split(os.path.dirname(__file__))[0], r'general\networks.shp'),
-                          'DISTANCE': 5, 'START_OFFSET': 0, 'END_OFFSET': 0,
-                          'OUTPUT': output__along_geometry}
                 alg.processAlgorithm(params, context, feedback=feedback)
-                self.stat['PointsAlongGeometry'] = time.time() - time_1
+            else:
+                processing.run('native:buffer', params, feedback=feedback)
+            self.stat['PointsAlongGeometry'] = time.time() - time_1
         except:
-            self.message = "PointsAlongGeometry failed"
+            self.message = "PointsAlongGeometry is failed"
             return
 
         ##########Create line that connect between each POI to nearest points along roads
@@ -121,13 +128,16 @@ class MergePoint:
             time_1 = time.time()
             constrains = buffer
             output_poly_as_lines = os.path.join(os.path.dirname(__file__), r'results_file/poly_as_lines.shp')
-
-            alg = PolygonsToLines()
-            alg.initAlgorithm()
             params = {'INPUT': constrains, 'OUTPUT': output_poly_as_lines}
-            alg.processAlgorithm(params, context, feedback=feedback)
+            # different implementation among QGIS versions
+            if inty < 10:
+                from plugins.processing.algs.qgis.PolygonsToLines import PolygonsToLines
+                alg = PolygonsToLines()
+                alg.initAlgorithm()
+                alg.processAlgorithm(params, context, feedback=feedback)
+            else:
+                processing.run("native:polygonstolines", params)
             self.stat['PolygonsToLines'] = time.time() - time_1
-
         except:
             self.message = "PolygonsToLines failed"
             return

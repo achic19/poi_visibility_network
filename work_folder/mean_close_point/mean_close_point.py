@@ -9,6 +9,7 @@ from qgis.core import *
 
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.4\apps\qgis-ltr\python\plugins')
+sys.path.append(r'C:\Program Files\QGIS 3.10\apps\qgis-ltr\python\plugins')
 # Reference the algorithm you want to run
 from plugins import processing
 from plugins.processing.algs.qgis.DeleteDuplicateGeometries import *
