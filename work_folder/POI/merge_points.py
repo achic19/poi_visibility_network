@@ -87,7 +87,6 @@ class MergePoint:
             input_path = output_clip
             input_clip = self.upload_new_layer(input_path, "input")
             hubs_path = output__along_geometry
-            hubs = self.upload_new_layer(hubs_path, "hubs_")
             output_hub_dis_line = os.path.join(os.path.dirname(__file__), r'results_file/line_to_points.shp')
 
             alg = HubDistanceLines()
@@ -100,7 +99,7 @@ class MergePoint:
             project.setCrs(target_crs)
             context = QgsProcessingContext()
             context.setProject(project)
-            params = {'INPUT': input_clip, 'HUBS': hubs, 'FIELD': 'angle', 'UNIT': 4, 'OUTPUT': output_hub_dis_line}
+            params = {'INPUT': input_path, 'HUBS': hubs_path, 'FIELD': 'angle', 'UNIT': 4, 'OUTPUT': output_hub_dis_line}
             alg.processAlgorithm(params, context, feedback=feedback)
             self.stat['HubDistanceLines'] = time.time() - time_1
         except:
