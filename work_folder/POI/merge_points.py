@@ -75,7 +75,7 @@ class MergePoint:
                 context = QgsProcessingContext()
                 alg.processAlgorithm(params, context, feedback=feedback)
             else:
-                processing.run('native:buffer', params, feedback=feedback)
+                processing.run('native:pointsalonglines', params, feedback=feedback)
             self.stat['PointsAlongGeometry'] = time.time() - time_1
         except:
             self.message = "PointsAlongGeometry is failed"

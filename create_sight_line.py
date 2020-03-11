@@ -133,7 +133,7 @@ class SightLine:
         except:
             print("delete_duplicate_geometries is failed")
 
-    def create_sight_lines_pot(self,final, restricted, restricted_length):
+    def create_sight_lines_pot(self, final, restricted, restricted_length):
         '''
 
         :param restricted_length: What is the max permitted distance
@@ -214,7 +214,7 @@ class SightLine:
             file_path = os.path.join(self.res_folder, graph_name + '.gdf')
             file1 = open(file_path, "w")
             # Write intersection nodes to file
-            title = "nodedef>name VARCHAR,x DOUBLE,y DOUBLE,size DOUBLE"
+            title = "nodedef>name VARCHAR,x DOUBLE,y DOUBLE,size DOUBLE,type VARCHAR"
             file1.write(title)
             nodes_features = self.layers[0].getFeatures()
             # lambda x: x.geometry(), nodes_features
@@ -223,7 +223,7 @@ class SightLine:
                 file1.write('"' + str(feature['point_id']) + '"' + ',' + '"' +
                             str(feature.geometry().asPoint()[0]) + '"' + ',' + '"' + str(
                     feature.geometry().asPoint()[1]) + '"' +
-                            ',' + '"10"')
+                            ',' + '"10"' + ',' + '"' + str(feature['poi_type']) + '"')
             # Write sight edges to file
 
             # Add new fields to layer (length and weight)

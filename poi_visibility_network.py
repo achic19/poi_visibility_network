@@ -32,9 +32,9 @@ from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 
 # Initialize Qt resources from file resources.py
-from .resources import *
 # Import the code for the dialog
-
+# from .resources import *
+from .resources import *
 sys.path.append(os.path.dirname(__file__))
 
 from .work_folder.fix_geometry.QGIS import *
@@ -470,8 +470,8 @@ class PoiVisibilityNetwork:
         # Calc sight lines
 
         time_1 = time.time()
-        result = my_sight_line.create_sight_lines_pot(final,restricted=restricted
-                                               , restricted_length=restricted_length)
+        result = my_sight_line.create_sight_lines_pot(final, restricted=restricted
+                                                      , restricted_length=restricted_length)
         time_interval = str(time.time() - time_1)
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
@@ -494,8 +494,13 @@ class PoiVisibilityNetwork:
             path_node,
             "nodes",
             "ogr")
+        sight_lines = QgsVectorLayer(
+            sight_line,
+            "sight_line",
+            "ogr")
         if nodes.fields()[len(nodes.fields()) - 1].name() != 'point_id':
-            nodes.dataProvider().addAttributes([QgsField('poi_type', QVariant.String),QgsField('point_id', QVariant.Int)])
+            nodes.dataProvider().addAttributes(
+                [QgsField('poi_type', QVariant.String), QgsField('point_id', QVariant.Int)])
             nodes.updateFields()
         n = len(nodes.fields())
         for i, feature in enumerate(nodes.getFeatures()):
@@ -514,14 +519,12 @@ class PoiVisibilityNetwork:
             for i, feature in enumerate(nodes.getFeatures()):
                 nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
 
-
-        # create gdf file
+        # create gdf file and update weight and length fields
         my_sight_line.layers[0] = nodes
+        my_sight_line.layers[1] = sight_lines
         my_sight_line.create_gdf_file(weight=weight, graph_name=self.graph_to_draw)
 
-
         # Add sight lines and node to project
-
 
         layer = self.iface.addVectorLayer(path_node, " ", "ogr")
         self.iface.addVectorLayer(sight_line, " ", "ogr")
@@ -569,4 +572,3 @@ class PoiVisibilityNetwork:
             renderer = QgsSingleSymbolRenderer(symbol_1)
         # apply the renderer to the layer
         layer.setRenderer(renderer)
-
