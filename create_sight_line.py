@@ -192,7 +192,7 @@ class SightLine:
         try:
             intersect = os.path.dirname(__file__) + r'\work_folder\general\constrains.shp'
             line_path = os.path.dirname(__file__) + r'/work_folder/new_lines.shp'
-            sight_line_output = os.path.join(os.path.dirname(__file__), r'work_folder\general\sight_line_no_pr.shp')
+            sight_line_output = os.path.join(self.res_folder, r'sight_line.shp')
             params = {'INPUT': line_path, 'PREDICATE': [2], 'INTERSECT': intersect,
                       'OUTPUT': sight_line_output}
             self.res = processing.run('native:extractbylocation', params, feedback=self.feedback)
@@ -308,6 +308,12 @@ class SightLine:
         if not layer:
             print("Layer failed to load!-" + path)
         return layer
+
+    def copy_shape_file_to_result_file(self, src, trg_name):
+        from shutil import copyfile
+        src = src[:-4]
+        dst = os.path.join(self.res_folder, trg_name)
+        map(lambda ext: copyfile(src + ext, dst + ext), ['.shp', '.dbf', '.prj', '.shx'])
 
     def add_layers_to_pro(self, layer_array):
         """Adding layers to project"""

@@ -483,11 +483,12 @@ class PoiVisibilityNetwork:
 
         # Some operation should be made for the displayed files
         # Projection back to the src source
-        sight_line = os.path.join(os.path.dirname(__file__), r'work_folder\general\sight_line_no_pr.shp')
-        SightLine.reproject([final, sight_line], constrains_gis.crs().authid(), ['sight_node', 'sight_line'],
-                            res_folder)
+        # sight_line = os.path.join(os.path.dirname(__file__), r'sight_line.shp')
+        # SightLine.reproject([final, sight_line], constrains_gis.crs().authid(), ['sight_node', 'sight_line'],
+        #                     res_folder)
 
         # Add  new fields that store information about points type and id point
+
         path_node = os.path.join(res_folder, 'sight_node.shp')
         sight_line = os.path.join(res_folder, 'sight_line.shp')
         nodes = QgsVectorLayer(
