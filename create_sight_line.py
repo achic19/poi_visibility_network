@@ -310,10 +310,16 @@ class SightLine:
         return layer
 
     def copy_shape_file_to_result_file(self, src, trg_name):
+        """
+        :param src: folder to copy shp file from
+        :param trg_name: name for the new shp file, the file will save in the result folders ( a variable of this class
+        """
         from shutil import copyfile
         src = src[:-4]
         dst = os.path.join(self.res_folder, trg_name)
-        map(lambda ext: copyfile(src + ext, dst + ext), ['.shp', '.dbf', '.prj', '.shx'])
+        for ext in ['.shp', '.dbf', '.prj', '.shx']:
+            copyfile(src + ext, dst + ext)
+
 
     def add_layers_to_pro(self, layer_array):
         """Adding layers to project"""

@@ -34,9 +34,8 @@ from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 # from .resources import *
-from .resources import *
 sys.path.append(os.path.dirname(__file__))
-
+from .resources import *
 from .work_folder.fix_geometry.QGIS import *
 from .work_folder.mean_close_point.mean_close_point import *
 from .work_folder.POI.merge_points import *
@@ -480,15 +479,9 @@ class PoiVisibilityNetwork:
         time_interval = str(time.time() - time_1)
         massage = ''.join((result, ':', time_interval))
         self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-
-        # Some operation should be made for the displayed files
-        # Projection back to the src source
-        # sight_line = os.path.join(os.path.dirname(__file__), r'sight_line.shp')
-        # SightLine.reproject([final, sight_line], constrains_gis.crs().authid(), ['sight_node', 'sight_line'],
-        #                     res_folder)
-
+        # copy sight nodes file to result folder
+        my_sight_line.copy_shape_file_to_result_file(final, 'sight_node')
         # Add  new fields that store information about points type and id point
-
         path_node = os.path.join(res_folder, 'sight_node.shp')
         sight_line = os.path.join(res_folder, 'sight_line.shp')
         nodes = QgsVectorLayer(
