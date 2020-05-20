@@ -69,17 +69,16 @@ class SightLine:
         :return:
         '''
         """Reproject all input layers to 3857 CRS (default - 3857)"""
-        try:
-            for i, layer in enumerate(layers_to_project_path):
-                if not (layer is None):
-                    # the name for the new reproject file
-                    output = os.path.join(os.path.dirname(__file__), relative_folder, names_list[i] + '.shp')
-                    params = {'INPUT': layer, 'TARGET_CRS': target_crs, 'OUTPUT': output}
-                    feedback = QgsProcessingFeedback()
-                    processing.run("native:reprojectlayer", params, feedback=feedback)
-            return "reproject is success"
-        except:
-            return "reproject is failed"
+
+        for i, layer in enumerate(layers_to_project_path):
+            if not (layer is None):
+                # the name for the new reproject file
+                output = os.path.join(os.path.dirname(__file__), relative_folder, names_list[i] + '.shp')
+                params = {'INPUT': layer, 'TARGET_CRS': target_crs, 'OUTPUT': output}
+                feedback = QgsProcessingFeedback()
+                processing.run("native:reprojectlayer", params, feedback=feedback)
+        return "reproject is success"
+
 
     @staticmethod
     def centerlized(use='plugin'):
