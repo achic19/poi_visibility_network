@@ -8,7 +8,7 @@
                               -------------------
         begin                : 2020-01-12
         git sha              : $Format:%H$
-        copyright            : (C) 2020 by Achituv Cohen/ Asya Natapov
+        copyright            : (C) 2020 by Achituv Cohen and Asya Natapov
         email                : achic19@gmail.com
  ***************************************************************************/
 
