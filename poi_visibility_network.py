@@ -78,7 +78,7 @@ class PoiVisibilityNetwork:
         self.menu = self.tr(u'&POI Visibility Network')
 
         # Check if plugin was started the first time in current QGIS session
-        # Must be set in initGui() to survive plugin reloads
+        # Must be set in initGui() to survive plugin reloads -test
         self.first_start = None
 
         # Specific code for this plugin
