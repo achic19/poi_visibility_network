@@ -8,7 +8,7 @@
                               -------------------
         begin                : 2020-01-12
         git sha              : $Format:%H$
-        copyright            : (C) 2020 by Achituv Cohen/ Asya Natapov
+        copyright            : (C) 2020 by Achituv Cohen and Asya Natapov
         email                : achic19@gmail.com
  ***************************************************************************/
 
@@ -34,12 +34,12 @@ from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 # from .resources import *
-sys.path.append(os.path.dirname(__file__))
 from .resources import *
+sys.path.append(os.path.dirname(__file__))
 from .work_folder.fix_geometry.QGIS import *
 from .work_folder.mean_close_point.mean_close_point import *
 from .work_folder.POI.merge_points import *
-from .create_sight_line import *
+from create_sight_line import *
 from plugins.processing.algs.qgis.LinesToPolygons import *
 
 
