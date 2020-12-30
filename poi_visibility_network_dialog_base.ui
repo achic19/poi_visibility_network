@@ -78,7 +78,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Select street central lines</string>
+        <string>Select street centerlines</string>
        </property>
       </widget>
      </item>
