@@ -6,7 +6,7 @@
 name=POI Visibility Network
 qgisMinimumVersion=3.0
 description=A tool for constructing and visualising a graph of sightlines between urban points of interest and street network.
-version=0.1
+version=0.2
 author=Achituv Cohen and Asya Natapov
 email=achic19@gmail.com
 
@@ -29,7 +29,7 @@ homepage=http://homepage
 category=Plugins
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False

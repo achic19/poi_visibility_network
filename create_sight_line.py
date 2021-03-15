@@ -1,6 +1,6 @@
 # Prepare the environment
 
-
+import json
 import math as mt
 import os
 import sys
@@ -30,6 +30,10 @@ class SightLine:
          :param project loading the layers into
          :param use to identify who call that class -  plugin or standalone """
         # Initiate QgsApplication
+        self.junc_loc = os.path.dirname(__file__) + r'\work_folder\general\intersections.shp'
+        self.network_st = os.path.join(os.path.dirname(__file__),
+                                       r'work_folder\fix_geometry\results_file\dissolve_0.shp')
+        self.junc_loc_0 = os.path.dirname(__file__) + r'\work_folder\general\intersections_0.shp'
         if use == "standalone":
             app = QGuiApplication([])
             QgsApplication.setPrefixPath(r'C:\Program Files\QGIS 3.0\apps\qgis', True)
@@ -79,7 +83,6 @@ class SightLine:
                 processing.run("native:reprojectlayer", params, feedback=feedback)
         return "reproject is success"
 
-
     @staticmethod
     def centerlized(use='plugin'):
         # Initiate QgsApplication
@@ -104,13 +107,10 @@ class SightLine:
     def intersections_points(self):
         """Upload input data"""
         try:
-            self.junc_loc_0 = os.path.dirname(__file__) + r'\work_folder\general\intersections_0.shp'
 
             # Find intersections points
-            network_st = os.path.join(os.path.dirname(__file__),
-                                      r'work_folder\fix_geometry\results_file\dissolve_0.shp')
-
-            params = {'INPUT': network_st, 'INTERSECT': network_st, 'INPUT_FIELDS': [], 'INTERSECT_FIELDS': [],
+            params = {'INPUT': self.network_st, 'INTERSECT': self.network_st, 'INPUT_FIELDS': [],
+                      'INTERSECT_FIELDS': [],
                       'OUTPUT': self.junc_loc_0}
 
             self.res = processing.run('native:lineintersections', params, feedback=self.feedback)
@@ -122,15 +122,65 @@ class SightLine:
         """Delete duplicate geometries in intesections_0 layer"""
         try:
 
-            junc_loc = os.path.dirname(__file__) + r'\work_folder\general\intersections.shp'
             alg = DeleteDuplicateGeometries()
             alg.initAlgorithm()
             context = QgsProcessingContext()
-            params = {'INPUT': self.junc_loc_0, 'OUTPUT': junc_loc}
+            params = {'INPUT': self.junc_loc_0, 'OUTPUT': self.junc_loc}
             self.res = alg.processAlgorithm(params, context, feedback=self.feedback)
             print("delete_duplicate_geometries is success")
         except:
             print("delete_duplicate_geometries is failed")
+
+    def turning_points(self):
+        # input data
+        line_path = self.network_st
+        single_part = os.path.dirname(__file__) + r'work_folder/general/single_part.shp'
+
+        # populate turning points layer with new points
+        layer_path = os.path.dirname(__file__) + r'/work_folder/turning_points.shp'
+        layer = self.upload_new_layer(layer_path, "layer")
+        layer.dataProvider().truncate()
+
+        # to single parts
+        params = {'INPUT': line_path, 'OUTPUT': single_part}
+        feedback = QgsProcessingFeedback()
+        processing.run('native:multiparttosingleparts', params, feedback=feedback)
+
+        # split with lines
+        split_with_lines = os.path.dirname(__file__) + r'/splitwithlines.shp'
+        processing.run("native:splitwithlines", {'INPUT': single_part,
+                                                 'LINES': single_part,
+                                                 'OUTPUT': split_with_lines})
+        lines = self.upload_new_layer(split_with_lines, "lines")
+        feature_list = []
+
+        # calculate azimuth and save points with azimuth larger than 30 degrees
+        for feature in lines.getFeatures():
+            feature_list = feature.geometry().asJson()
+            json1_data = json.loads(feature_list)['coordinates']
+            for cor_set in json1_data:
+                for i in range(0, len(cor_set) - 2):
+                    # calc slope as  an angle
+                    x1 = cor_set[i][0]
+                    y1 = cor_set[i][1]
+                    x2 = cor_set[i + 1][0]
+                    y2 = cor_set[i + 1][1]
+                    x3 = cor_set[i + 2][0]
+                    y3 = cor_set[i + 2][1]
+                    angle1 = mt.atan2(x2 - x1, y2 - y1) * 180 / mt.pi
+                    angle2 = mt.atan2(x3 - x2, y3 - y2) * 180 / mt.pi
+                    # calc angle between two lines
+                    angleB = 180 - angle1 + angle2
+                    if angleB < 0:
+                        angleB = angleB + 360
+                    if angleB > 360:
+                        angleB = angleB - 360
+                    if abs(angleB - 180) > 30:
+                        feat = QgsFeature()
+                        feat.setGeometry(cor_set[i + 1])
+                        feature_list.append(feat)
+
+        layer.dataProvider().addFeatures(feature_list)
 
     def create_sight_lines_pot(self, final, restricted, restricted_length):
         '''
@@ -318,7 +368,6 @@ class SightLine:
         dst = os.path.join(self.res_folder, trg_name)
         for ext in ['.shp', '.dbf', '.prj', '.shx']:
             copyfile(src + ext, dst + ext)
-
 
     def add_layers_to_pro(self, layer_array):
         """Adding layers to project"""

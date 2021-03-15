@@ -34,12 +34,12 @@ from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 # from .resources import *
-from .resources import *
 sys.path.append(os.path.dirname(__file__))
+from .resources import *
 from .work_folder.fix_geometry.QGIS import *
 from .work_folder.mean_close_point.mean_close_point import *
 from .work_folder.POI.merge_points import *
-from create_sight_line import *
+from .create_sight_line import *
 from plugins.processing.algs.qgis.LinesToPolygons import *
 
 
@@ -78,7 +78,7 @@ class PoiVisibilityNetwork:
         self.menu = self.tr(u'&POI Visibility Network')
 
         # Check if plugin was started the first time in current QGIS session
-        # Must be set in initGui() to survive plugin reloads -test
+        # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
         # Specific code for this plugin
@@ -425,8 +425,9 @@ class PoiVisibilityNetwork:
             # Calculate mean for close points, Finish with mean_close_coor.shp
             try:
                 time_1 = time.time()
-                MeanClosePoint()
                 my_sight_line.delete_duplicate_geometries()
+                my_sight_line.turning_points()
+                MeanClosePoint()
                 time_interval = str(time.time() - time_1)
                 result = 'Calculate mean for close points success'
                 massage = ''.join((result, ':', time_interval))

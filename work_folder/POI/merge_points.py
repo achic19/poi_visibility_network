@@ -106,7 +106,7 @@ class MergePoint:
             self.message = "HubDistanceLines failed"
             return
 
-        ########## buffer over constrain layer
+        ########## Buffer over constrain layer
         try:
             time_1 = time.time()
             constrains = overlay
