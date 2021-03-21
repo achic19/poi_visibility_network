@@ -81,7 +81,6 @@ class SightLine:
                 params = {'INPUT': layer, 'TARGET_CRS': target_crs, 'OUTPUT': output}
                 feedback = QgsProcessingFeedback()
                 processing.run("native:reprojectlayer", params, feedback=feedback)
-        return "reproject is success"
 
     @staticmethod
     def centerlized(use='plugin'):
@@ -92,49 +91,43 @@ class SightLine:
             QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
             QgsApplication.initQgis()
         """Reproject all input layers to 3857 CRS"""
-        try:
-            input = os.path.dirname(__file__) + r'/work_folder/general/pois.shp'
-            output = os.path.dirname(__file__) + r'/work_folder/general/pois1.shp'
-            feedback = QgsProcessingFeedback()
-            params = {
-                'INPUT': input,
-                'OUTPUT': output}
-            processing.run("native:centroids", params, feedback=feedback)
-            return "centroids is success", output
-        except:
-            return "centroids is failed"
+
+        input = os.path.dirname(__file__) + r'/work_folder/general/pois.shp'
+        output = os.path.dirname(__file__) + r'/work_folder/general/pois1.shp'
+        feedback = QgsProcessingFeedback()
+        params = {
+            'INPUT': input,
+            'OUTPUT': output}
+        processing.run("native:centroids", params, feedback=feedback)
+        return output
 
     def intersections_points(self):
         """Upload input data"""
-        try:
+        # Find intersections points
+        params = {'INPUT': self.network_st, 'INTERSECT': self.network_st, 'INPUT_FIELDS': [],
+                  'INTERSECT_FIELDS': [],
+                  'OUTPUT': self.junc_loc_0}
 
-            # Find intersections points
-            params = {'INPUT': self.network_st, 'INTERSECT': self.network_st, 'INPUT_FIELDS': [],
-                      'INTERSECT_FIELDS': [],
-                      'OUTPUT': self.junc_loc_0}
-
-            self.res = processing.run('native:lineintersections', params, feedback=self.feedback)
-            print("intersections_points is success")
-        except:
-            print("intersections_points is failed")
+        self.res = processing.run('native:lineintersections', params, feedback=self.feedback)
 
     def delete_duplicate_geometries(self):
         """Delete duplicate geometries in intesections_0 layer"""
         try:
-
             alg = DeleteDuplicateGeometries()
             alg.initAlgorithm()
             context = QgsProcessingContext()
-            params = {'INPUT': self.junc_loc_0, 'OUTPUT': self.junc_loc}
+            params = {'INPUT': self.junc_loc_0,
+                      'OUTPUT': os.path.dirname(__file__) + r'\work_folder\general\intersections_1.shp'}
             self.res = alg.processAlgorithm(params, context, feedback=self.feedback)
             print("delete_duplicate_geometries is success")
-        except:
-            print("delete_duplicate_geometries is failed")
+        except QgsProcessingException:
+            pass
 
     def turning_points(self):
+
         # input data
-        line_path = self.network_st
-        single_part = os.path.dirname(__file__) + r'work_folder/general/single_part.shp'
+        line_path = os.path.dirname(__file__) + r'/work_folder/fix_geometry/results_file/dissolve_0.shp'
+        single_part = os.path.dirname(__file__) + r'/work_folder/general/single_part.shp'
 
         # populate turning points layer with new points
         layer_path = os.path.dirname(__file__) + r'/work_folder/turning_points.shp'
@@ -152,7 +145,7 @@ class SightLine:
                                                  'LINES': single_part,
                                                  'OUTPUT': split_with_lines})
         lines = self.upload_new_layer(split_with_lines, "lines")
-        feature_list = []
+        temp_list = []
 
         # calculate azimuth and save points with azimuth larger than 30 degrees
         for feature in lines.getFeatures():
@@ -177,10 +170,20 @@ class SightLine:
                         angleB = angleB - 360
                     if abs(angleB - 180) > 30:
                         feat = QgsFeature()
-                        feat.setGeometry(cor_set[i + 1])
-                        feature_list.append(feat)
+                        my_point = QgsPointXY(x2, y2)
+                        g_pnt = QgsGeometry.fromPointXY(my_point)
+                        feat.setGeometry(g_pnt)
+                        temp_list.append(feat)
 
-        layer.dataProvider().addFeatures(feature_list)
+        layer.dataProvider().addFeatures(temp_list)
+
+        # Merge all points to one layer
+        layer_2 = os.path.dirname(__file__) + r'\work_folder\general\intersections_1.shp'
+        merge_layers = [layer_path, layer_2]
+        # Merge also intersection points in case of all
+        params = {'LAYERS': merge_layers, 'CRS': 'EPSG:3857', 'OUTPUT': self.junc_loc}
+
+        processing.run('native:mergevectorlayers', params, feedback=feedback)
 
     def create_sight_lines_pot(self, final, restricted, restricted_length):
         '''
@@ -191,64 +194,56 @@ class SightLine:
         :return: success or fail massage
         '''
         """create lines based on the intersections"""
-        try:
 
-            # Upload intersection layers
-            self.layers.append(self.upload_new_layer(final, "all_pnts"))
-            # Save points with python dataset
-            junctions_features = self.layers[0].getFeatures()
-            # Get the geometry of each element into a list
-            python_geo = list(map(lambda x: x.geometry(), junctions_features))
-            # Populate line file with potential sight of lines
-            layer_path = os.path.dirname(__file__) + r'/work_folder/new_lines.shp'
-            layer = self.upload_new_layer(layer_path, "layer")
-            layer.dataProvider().truncate()
+        # Upload intersection layers
+        self.layers.append(self.upload_new_layer(final, "all_pnts"))
+        # Save points with python dataset
+        junctions_features = self.layers[0].getFeatures()
+        # Get the geometry of each element into a list
+        python_geo = list(map(lambda x: x.geometry(), junctions_features))
+        # Populate line file with potential sight of lines
+        layer_path = os.path.dirname(__file__) + r'/work_folder/new_lines.shp'
+        layer = self.upload_new_layer(layer_path, "layer")
+        layer.dataProvider().truncate()
 
-            fields = QgsFields()
-            fields.append(QgsField("from", QVariant.Int))
-            fields.append(QgsField("to", QVariant.Int))
-            featureList = []
-            for i, feature in enumerate(python_geo):
-                for j in range(i + 1, len(python_geo)):
-                    # Add geometry to lines' features  - the nodes of each line
-                    feat = QgsFeature()
-                    point1 = feature.asPoint()
-                    point2 = python_geo[j].asPoint()
-                    # in case of restricted weight, check if the current disstance between two points is larger than
-                    # allowed
-                    if restricted:
-                        # Create a measure object
-                        distance = QgsDistanceArea()
+        fields = QgsFields()
+        fields.append(QgsField("from", QVariant.Int))
+        fields.append(QgsField("to", QVariant.Int))
+        featureList = []
+        for i, feature in enumerate(python_geo):
+            for j in range(i + 1, len(python_geo)):
+                # Add geometry to lines' features  - the nodes of each line
+                feat = QgsFeature()
+                point1 = feature.asPoint()
+                point2 = python_geo[j].asPoint()
+                # in case of restricted weight, check if the current disstance between two points is larger than
+                # allowed
+                if restricted:
+                    # Create a measure object
+                    distance = QgsDistanceArea()
 
-                        # Measure the distance
-                        m = distance.measureLine(point1, point2)
-                        if m > restricted_length:
-                            continue
-                    gLine = QgsGeometry.fromPolylineXY([point1, point2])
-                    feat.setGeometry(gLine)
-                    # Add  the nodes id as attributes to lines' features
-                    feat.setFields(fields)
-                    feat.setAttributes([i, j])
-                    featureList.append(feat)
-            layer.dataProvider().addFeatures(featureList)
-
-            return ('create_sight_lines_pot sucsess')
-        except:
-            return ('create_sight_lines_pot failed')
+                    # Measure the distance
+                    m = distance.measureLine(point1, point2)
+                    if m > restricted_length:
+                        continue
+                gLine = QgsGeometry.fromPolylineXY([point1, point2])
+                feat.setGeometry(gLine)
+                # Add  the nodes id as attributes to lines' features
+                feat.setFields(fields)
+                feat.setAttributes([i, j])
+                featureList.append(feat)
+        layer.dataProvider().addFeatures(featureList)
 
     def find_sight_line(self):
         """Run native algorithm ( in C++) to find sight line)"""
-        try:
-            intersect = os.path.dirname(__file__) + r'\work_folder\general\constrains.shp'
-            line_path = os.path.dirname(__file__) + r'/work_folder/new_lines.shp'
-            sight_line_output = os.path.join(self.res_folder, r'sight_line.shp')
-            params = {'INPUT': line_path, 'PREDICATE': [2], 'INTERSECT': intersect,
-                      'OUTPUT': sight_line_output}
-            self.res = processing.run('native:extractbylocation', params, feedback=self.feedback)
-            self.layers.append(self.upload_new_layer(self.res['OUTPUT'], "_sight_line"))
-            return ("Find sight line sucsess")
-        except:
-            return ("Find sight line failed")
+
+        intersect = os.path.dirname(__file__) + r'\work_folder\general\constrains.shp'
+        line_path = os.path.dirname(__file__) + r'/work_folder/new_lines.shp'
+        sight_line_output = os.path.join(self.res_folder, r'sight_line.shp')
+        params = {'INPUT': line_path, 'PREDICATE': [2], 'INTERSECT': intersect,
+                  'OUTPUT': sight_line_output}
+        self.res = processing.run('native:extractbylocation', params, feedback=self.feedback)
+        self.layers.append(self.upload_new_layer(self.res['OUTPUT'], "_sight_line"))
 
     def create_gdf_file(self, weight, graph_name):
         '''
@@ -258,71 +253,60 @@ class SightLine:
         :return:
         '''
         """create gdf file"""
-        try:
-            # Open text file as gdf file
-            file_path = os.path.join(self.res_folder, graph_name + '.gdf')
-            file1 = open(file_path, "w")
-            # Write intersection nodes to file
-            title = "nodedef>name VARCHAR,x DOUBLE,y DOUBLE,size DOUBLE,type VARCHAR"
-            file1.write(title)
-            nodes_features = self.layers[0].getFeatures()
-            # lambda x: x.geometry(), nodes_features
-            for i, feature in enumerate(nodes_features):
-                file1.write('\n')
-                file1.write('"' + str(feature['point_id']) + '"' + ',' + '"' +
-                            str(feature.geometry().asPoint()[0]) + '"' + ',' + '"' + str(
-                    feature.geometry().asPoint()[1]) + '"' +
-                            ',' + '"10"' + ',' + '"' + str(feature['poi_type']) + '"')
-            # Write sight edges to file
 
-            # Add new fields to layer (length and weight)
-            if self.layers[1].fields()[len(self.layers[1].fields()) - 2].name() != "length":
-                self.layers[1].dataProvider().addAttributes([QgsField("length", QVariant.Double)])
-                self.layers[1].updateFields()
+        # Open text file as gdf file
+        file_path = os.path.join(self.res_folder, graph_name + '.gdf')
+        file1 = open(file_path, "w")
+        # Write intersection nodes to file
+        title = "nodedef>name VARCHAR,x DOUBLE,y DOUBLE,size DOUBLE,type VARCHAR"
+        file1.write(title)
+        nodes_features = self.layers[0].getFeatures()
+        # lambda x: x.geometry(), nodes_features
+        for i, feature in enumerate(nodes_features):
+            file1.write('\n')
+            file1.write('"' + str(feature['point_id']) + '"' + ',' + '"' +
+                        str(feature.geometry().asPoint()[0]) + '"' + ',' + '"' + str(
+                feature.geometry().asPoint()[1]) + '"' +
+                        ',' + '"10"' + ',' + '"' + str(feature['poi_type']) + '"')
+        # Write sight edges to file
 
-            if self.layers[1].fields()[len(self.layers[1].fields()) - 1].name() != "weight":
-                self.layers[1].dataProvider().addAttributes([QgsField("weight", QVariant.Double)])
-                self.layers[1].updateFields()
+        # Add new fields to layer (length and weight)
+        if self.layers[1].fields()[len(self.layers[1].fields()) - 2].name() != "length":
+            self.layers[1].dataProvider().addAttributes([QgsField("length", QVariant.Double)])
+            self.layers[1].updateFields()
 
-            # Populate weight data
-            n = len(self.layers[1].fields())
-            i = 0
-            for f in self.layers[1].getFeatures():
-                geom_length = f.geometry().length()
-                self.layers[1].dataProvider().changeAttributeValues({i: {n - 2: geom_length}})
-                if weight:
-                    # if restricted:
-                    #     i = self.restricted_calculation(geom_length, restricted_length, i, n,
-                    #                                     1 / mt.pow(geom_length, 2) * 10000)
-                    # else:
-                    self.weight_calculation(i, n, 1 / mt.pow(geom_length, 2) * 10000)
-                    i = i + 1
-                else:
-                    # if restricted:
-                    #     i = self.restricted_calculation(geom_length, restricted_length, i, n, 1)
-                    # else:
-                    self.weight_calculation(i, n, 1)
-                    i = i + 1
+        if self.layers[1].fields()[len(self.layers[1].fields()) - 1].name() != "weight":
+            self.layers[1].dataProvider().addAttributes([QgsField("weight", QVariant.Double)])
+            self.layers[1].updateFields()
 
-            # Write title
-            file1.write("\nedgedef>node1 VARCHAR,node2 VARCHAR,weight DOUBLE\n")
-            edges_features = self.layers[1].getFeatures()
+        # Populate weight data
+        n = len(self.layers[1].fields())
+        i = 0
+        for f in self.layers[1].getFeatures():
+            geom_length = f.geometry().length()
+            self.layers[1].dataProvider().changeAttributeValues({i: {n - 2: geom_length}})
+            if weight:
+                # if restricted:
+                #     i = self.restricted_calculation(geom_length, restricted_length, i, n,
+                #                                     1 / mt.pow(geom_length, 2) * 10000)
+                # else:
+                self.weight_calculation(i, n, 1 / mt.pow(geom_length, 2) * 10000)
+                i = i + 1
+            else:
+                # if restricted:
+                #     i = self.restricted_calculation(geom_length, restricted_length, i, n, 1)
+                # else:
+                self.weight_calculation(i, n, 1)
+                i = i + 1
 
-            # Write
-            for feature in edges_features:
-                file1.write("{},{},{}\n".format(feature['from'], feature['to'], feature['weight']))
-            file1.close()
-            return ("create_gdf_file sucsess")
-        except:
-            return ("create_gdf_file failed")
+        # Write title
+        file1.write("\nedgedef>node1 VARCHAR,node2 VARCHAR,weight DOUBLE\n")
+        edges_features = self.layers[1].getFeatures()
 
-    # def restricted_calculation(self, geom_length, restricted_length, i, n, weight):
-    #     if geom_length > restricted_length:
-    #         self.layers[1].dataProvider().deleteFeatures([i])
-    #         return i
-    #     else:
-    #         self.weight_calculation(i, n, weight)
-    #         return i + 1
+        # Write
+        for feature in edges_features:
+            file1.write("{},{},{}\n".format(feature['from'], feature['to'], feature['weight']))
+        file1.close()
 
     def weight_calculation(self, i, n, weight):
         self.layers[1].dataProvider().changeAttributeValues({i: {n - 1: weight}})

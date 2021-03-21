@@ -35,12 +35,12 @@ from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 # Import the code for the dialog
 # from .resources import *
 sys.path.append(os.path.dirname(__file__))
-from .resources import *
 from .work_folder.fix_geometry.QGIS import *
 from .work_folder.mean_close_point.mean_close_point import *
 from .work_folder.POI.merge_points import *
 from .create_sight_line import *
 from plugins.processing.algs.qgis.LinesToPolygons import *
+from .resources import *
 
 
 class PoiVisibilityNetwork:
@@ -356,7 +356,6 @@ class PoiVisibilityNetwork:
         :param poi: check its geometry and if necessary centerlized it
         :return:
         '''
-        import time
         # In case of constrain as polyline file and network involve POI, the polyline file should convert to
         # to polygon file
         if constrains_gis.geometryType() == 1 and self.graph_to_draw in ['ivg', 'poi']:
@@ -369,117 +368,52 @@ class PoiVisibilityNetwork:
             alg.processAlgorithm(params, context, feedback=feedback)
             constrains_temp = output
         # #  Reproject layers files
-        time_1 = time.time()
-        result = SightLine.reproject([network_temp, constrains_temp, poi_temp])
-        time_interval = str(time.time() - time_1)
-        massage = ''.join((result, ':', time_interval))
+        SightLine.reproject([network_temp, constrains_temp, poi_temp])
 
-        self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-
-        # # Define intersections only between more than 2 lines return dissolve_0
-
+        # Define intersections only between more than 2 lines return dissolve_0
         network = os.path.join(os.path.dirname(__file__), r'work_folder\general\networks.shp')
-        try:
-            time_1 = time.time()
-            myQGIS(network, "_lines")
-            time_interval = str(time.time() - time_1)
-            result = 'Define intersection between two lines success'
-            massage = ''.join((result, ':', time_interval))
-
-            self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-        except:
-            self.iface.messageBar().pushMessage('Define intersection between two lines failed', level=Qgis.Info)
-
+        myQGIS(network, "_lines")
         network_new = os.path.join(os.path.dirname(__file__), r'work_folder\fix_geometry\results_file\dissolve_0.shp')
 
+        # Create sight_line instance success
         constrains = os.path.join(os.path.dirname(__file__), r'work_folder\general\constrains.shp')
         my_sight_line = SightLine(network_new, constrains, res_folder, NULL)
-        try:
-            time_1 = time.time()
-            my_sight_line = SightLine(network, constrains, res_folder, NULL)
-            time_interval = str(time.time() - time_1)
-            result = 'Create sight_line instance success'
-            massage = ''.join((result, ':', time_interval))
-
-            self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-
-        except:
-            self.iface.messageBar().pushMessage('Create sight_line instance failed', level=Qgis.Info)
 
         # Don't run in case of POI graph
         if self.graph_to_draw in ['ivg', 'snvg']:
-            try:
-                # Find intersections
-                time_1 = time.time()
-                my_sight_line.intersections_points()
-                my_sight_line.delete_duplicate_geometries()
-                time_interval = str(time.time() - time_1)
-                result = 'Find intersections success'
-                massage = ''.join((result, ':', time_interval))
-
-                self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-
-            except:
-                self.iface.messageBar().pushMessage('Find intersections failed', level=Qgis.Info)
+            # Find intersections success
+            my_sight_line.intersections_points()
+            my_sight_line.delete_duplicate_geometries()
 
             # Calculate mean for close points, Finish with mean_close_coor.shp
-            try:
-                time_1 = time.time()
-                my_sight_line.delete_duplicate_geometries()
-                my_sight_line.turning_points()
-                MeanClosePoint()
-                time_interval = str(time.time() - time_1)
-                result = 'Calculate mean for close points success'
-                massage = ''.join((result, ':', time_interval))
+            my_sight_line.turning_points()
+            MeanClosePoint()
+            my_sight_line.delete_duplicate_geometries()
 
-                self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
+        if self.graph_to_draw in ['ivg', 'poi']:
+            # Merge all the visibility POI's and intersections
+            #  to one file and project POI points outside polygons ,
+            # Finish with final.shp
+            poi_path = os.path.join(os.path.dirname(__file__), r'work_folder\general\pois.shp')
+            # In a case of POI as polygon or polyline  centralized the layer
+            if not poi.geometryType() == 0:
+                poi_path = SightLine.centerlized()
 
-            except:
-                self.iface.messageBar().pushMessage('Calculate mean for close points failed', level=Qgis.Info)
-
-        try:
-            time_1 = time.time()
-            if self.graph_to_draw in ['ivg', 'poi']:
-                # Merge all the visibility POI's and intersections
-                #  to one file and project POI points outside polygons ,
-                # Finish with final.shp
-                poi_path = os.path.join(os.path.dirname(__file__), r'work_folder\general\pois.shp')
-                # In a case of POI as polygon or polyline  centralized the layer
-                if not poi.geometryType() == 0:
-                    result, poi_path = SightLine.centerlized()
-                    self.iface.messageBar().pushMessage(result, level=Qgis.Info)
-
-                if self.graph_to_draw == 'poi':
-                    mp = MergePoint(poi_path)
-                else:
-                    mp = MergePoint(poi_path, graph_type=1)
-                final = os.path.join(os.path.dirname(__file__), r'work_folder\POI\results_file\final.shp')
+            if self.graph_to_draw == 'poi':
+                MergePoint(poi_path)
             else:
+                MergePoint(poi_path, graph_type=1)
+            final = os.path.join(os.path.dirname(__file__), r'work_folder\POI\results_file\final.shp')
+        else:
 
-                final = os.path.join(os.path.dirname(__file__), r'work_folder\mean_close_point\results_file\final.shp')
-            time_interval = str(time.time() - time_1)
-
-            massage = ''.join((mp.message, ':', time_interval))
-            self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-            self.iface.messageBar().pushMessage(str(mp.stat), level=Qgis.Info)
-            # massage = str(merge_point.stat)
-            # self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-        except:
-            self.iface.messageBar().pushMessage('Merge visibility points failed', level=Qgis.Info)
+            final = os.path.join(os.path.dirname(__file__), r'work_folder\mean_close_point\results_file\final.shp')
 
         # Calc sight lines
 
-        time_1 = time.time()
-        result = my_sight_line.create_sight_lines_pot(final, restricted=restricted
-                                                      , restricted_length=restricted_length)
-        time_interval = str(time.time() - time_1)
-        massage = ''.join((result, ':', time_interval))
-        self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
-        time_1 = time.time()
-        result = my_sight_line.find_sight_line()
-        time_interval = str(time.time() - time_1)
-        massage = ''.join((result, ':', time_interval))
-        self.iface.messageBar().pushMessage(massage, level=Qgis.Info)
+        my_sight_line.create_sight_lines_pot(final, restricted=restricted
+                                             , restricted_length=restricted_length)
+
+        my_sight_line.find_sight_line()
         # copy sight nodes file to result folder
         my_sight_line.copy_shape_file_to_result_file(final, 'sight_node')
         # Add  new fields that store information about points type and id point
