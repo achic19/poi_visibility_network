@@ -209,7 +209,7 @@ class SightLine:
         fields = QgsFields()
         fields.append(QgsField("from", QVariant.Int))
         fields.append(QgsField("to", QVariant.Int))
-        featureList = []
+        feature_list = []
         for i, feature in enumerate(python_geo):
             for j in range(i + 1, len(python_geo)):
                 # Add geometry to lines' features  - the nodes of each line
@@ -231,8 +231,8 @@ class SightLine:
                 # Add  the nodes id as attributes to lines' features
                 feat.setFields(fields)
                 feat.setAttributes([i, j])
-                featureList.append(feat)
-        layer.dataProvider().addFeatures(featureList)
+                feature_list.append(feat)
+        layer.dataProvider().addFeatures(feature_list)
 
     def find_sight_line(self):
         """Run native algorithm ( in C++) to find sight line)"""

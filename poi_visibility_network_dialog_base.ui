@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>471</width>
-    <height>499</height>
+    <width>395</width>
+    <height>503</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -179,6 +179,30 @@
         <string>Weighted vision </string>
        </property>
       </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QCheckBox" name="checkBox_3">
+         <property name="whatsThis">
+          <string/>
+         </property>
+         <property name="text">
+          <string>Aggregation distance (distance in meters)</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="lineEdit_3">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="whatsThis">
+          <string/>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>

@@ -42,7 +42,6 @@ from .create_sight_line import *
 from plugins.processing.algs.qgis.LinesToPolygons import *
 from .resources import *
 
-
 class PoiVisibilityNetwork:
     """QGIS Plugin Implementation."""
 
@@ -89,6 +88,7 @@ class PoiVisibilityNetwork:
         self.dlg.radioButton_6.toggled.connect(self.select_poi_graph)
         self.filename = os.path.join(os.path.dirname(__file__), 'results')
         self.layer_list = []
+        self.error = ''
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -334,18 +334,29 @@ class PoiVisibilityNetwork:
             else:
                 restricted = 0
                 restricted_length = 0
+
+            # handle aggregation distance
+            if self.dlg.checkBox_3.isChecked():
+                try:
+                    aggr_dist = float(self.dlg.lineEdit_3.text())
+                except ValueError:
+                    self.error = 'Non-numeric data found in the aggregation distance input'
+                    flag = False
+            else:
+                aggr_dist = 20
             if flag:
                 self.run_logic(network_temp, constrains, constrains_temp, poi_temp, res_folder, weight, restricted,
-                               restricted_length, poi)
+                               restricted_length, poi, aggr_dist)
+                self.iface.messageBar().pushMessage("Sight lines is created in {} seconds".
+                                                    format(str(time.time() - time_tot)), level=Qgis.Info)
             else:
                 self.iface.messageBar().pushMessage(self.error, level=Qgis.Critical)
-            self.iface.messageBar().pushMessage(str(time.time() - time_tot), level=Qgis.Info)
 
     def run_logic(self, network_temp, constrains_gis, constrains_temp, poi_temp, res_folder, weight, restricted,
-                  restricted_length,
-                  poi):
+                  restricted_length, poi, aggr_dist):
         '''
         The params are input from user
+        :param aggr_dist: aggregation distance when  MeanClosePoint function is applied
         :param network_temp:
         :param constrains_temp:
         :param poi_temp:
@@ -387,7 +398,7 @@ class PoiVisibilityNetwork:
 
             # Calculate mean for close points, Finish with mean_close_coor.shp
             my_sight_line.turning_points()
-            MeanClosePoint()
+            MeanClosePoint(aggr_dist)
             my_sight_line.delete_duplicate_geometries()
 
         if self.graph_to_draw in ['ivg', 'poi']:
