@@ -42,6 +42,7 @@ from .create_sight_line import *
 from plugins.processing.algs.qgis.LinesToPolygons import *
 from .resources import *
 
+
 class PoiVisibilityNetwork:
     """QGIS Plugin Implementation."""
 
@@ -86,6 +87,12 @@ class PoiVisibilityNetwork:
         self.dlg.radioButton_4.toggled.connect(self.select_ivg_graph)
         self.dlg.radioButton_5.toggled.connect(self.select_snvg_graph)
         self.dlg.radioButton_6.toggled.connect(self.select_poi_graph)
+
+        # Listen for type of processing
+        self.dlg.radioButton.toggled.connect(1)
+        self.dlg.radioButton_2.toggled.connect(2)
+        self.dlg.radioButton_3.toggled.connect(3)
+
         self.filename = os.path.join(os.path.dirname(__file__), 'results')
         self.layer_list = []
         self.error = ''
@@ -228,6 +235,25 @@ class PoiVisibilityNetwork:
         self.dlg.comboBox_3.setEnabled(True)
         self.graph_to_draw = 'ivg'
         # 1
+
+    def switch(self, value):
+        flag_streets = True
+        if value == 2:
+            flag_streets = False
+        #  Create Visibility Graph
+
+        # self.dlg.radioButton_4.setEnabeld(flag_streets)
+        # self.dlg.radioButton_5.setEnabeld(flag_streets)
+        # self.dlg.radioButton_6.setEnabeld(flag_streets)
+
+        #  Input Layers
+        self.dlg.comboBox_1.setEnabled(flag_streets)
+        self.dlg.comboBox_2.setEnabled(flag_streets)
+        self.dlg.comboBox_3.setEnabled(flag_streets)
+
+        # Distance Options
+        self.dlg.checkBox_3.setEnabled(flag_streets)
+        self.dlg.lineEdit_3.setEnabled(flag_streets)
 
     def papulate_comboList(self, geometry_type):
         '''
