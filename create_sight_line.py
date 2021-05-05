@@ -43,8 +43,8 @@ class SightLine:
         self.use = use
 
         # These attributes are input from the user
-
-        self.network = self.upload_new_layer(network, "_network")
+        if self.network is not None:
+            self.network = self.upload_new_layer(network, "_network")
         self.constrain = self.upload_new_layer(constrains, "_constrain")
         self.feedback = QgsProcessingFeedback()
         self.res_folder = res_folder
@@ -245,13 +245,13 @@ class SightLine:
         self.res = processing.run('native:extractbylocation', params, feedback=self.feedback)
         self.layers.append(self.upload_new_layer(self.res['OUTPUT'], "_sight_line"))
 
-    def create_gdf_file(self, weight, graph_name):
-        '''
-
+    def create_gdf_file(self, weight, graph_name, is_sight_line: int):
+        """
         :param weight: 0 all sight lines with same weight 1 all sight lines with weight based on their length
         :param graph_name: for the name of the generated gdf file
+        :param is_sight_line: 1 or 2 - there is sight line 3- no sight line layer
         :return:
-        '''
+        """
         """create gdf file"""
 
         # Open text file as gdf file
@@ -268,44 +268,38 @@ class SightLine:
                         str(feature.geometry().asPoint()[0]) + '"' + ',' + '"' + str(
                 feature.geometry().asPoint()[1]) + '"' +
                         ',' + '"10"' + ',' + '"' + str(feature['poi_type']) + '"')
+
         # Write sight edges to file
+        if is_sight_line != 3:
+            # Add new fields to layer (length and weight)
+            if self.layers[1].fields()[len(self.layers[1].fields()) - 2].name() != "length":
+                self.layers[1].dataProvider().addAttributes([QgsField("length", QVariant.Double)])
+                self.layers[1].updateFields()
 
-        # Add new fields to layer (length and weight)
-        if self.layers[1].fields()[len(self.layers[1].fields()) - 2].name() != "length":
-            self.layers[1].dataProvider().addAttributes([QgsField("length", QVariant.Double)])
-            self.layers[1].updateFields()
+            if self.layers[1].fields()[len(self.layers[1].fields()) - 1].name() != "weight":
+                self.layers[1].dataProvider().addAttributes([QgsField("weight", QVariant.Double)])
+                self.layers[1].updateFields()
 
-        if self.layers[1].fields()[len(self.layers[1].fields()) - 1].name() != "weight":
-            self.layers[1].dataProvider().addAttributes([QgsField("weight", QVariant.Double)])
-            self.layers[1].updateFields()
+            # Populate weight data
+            n = len(self.layers[1].fields())
+            i = 0
+            for f in self.layers[1].getFeatures():
+                geom_length = f.geometry().length()
+                self.layers[1].dataProvider().changeAttributeValues({i: {n - 2: geom_length}})
+                if weight:
+                    self.weight_calculation(i, n, 1 / mt.pow(geom_length, 2) * 10000)
+                    i = i + 1
+                else:
+                    self.weight_calculation(i, n, 1)
+                    i = i + 1
 
-        # Populate weight data
-        n = len(self.layers[1].fields())
-        i = 0
-        for f in self.layers[1].getFeatures():
-            geom_length = f.geometry().length()
-            self.layers[1].dataProvider().changeAttributeValues({i: {n - 2: geom_length}})
-            if weight:
-                # if restricted:
-                #     i = self.restricted_calculation(geom_length, restricted_length, i, n,
-                #                                     1 / mt.pow(geom_length, 2) * 10000)
-                # else:
-                self.weight_calculation(i, n, 1 / mt.pow(geom_length, 2) * 10000)
-                i = i + 1
-            else:
-                # if restricted:
-                #     i = self.restricted_calculation(geom_length, restricted_length, i, n, 1)
-                # else:
-                self.weight_calculation(i, n, 1)
-                i = i + 1
+            # Write title
+            file1.write("\nedgedef>node1 VARCHAR,node2 VARCHAR,weight DOUBLE\n")
+            edges_features = self.layers[1].getFeatures()
 
-        # Write title
-        file1.write("\nedgedef>node1 VARCHAR,node2 VARCHAR,weight DOUBLE\n")
-        edges_features = self.layers[1].getFeatures()
-
-        # Write
-        for feature in edges_features:
-            file1.write("{},{},{}\n".format(feature['from'], feature['to'], feature['weight']))
+            # Write
+            for feature in edges_features:
+                file1.write("{},{},{}\n".format(feature['from'], feature['to'], feature['weight']))
         file1.close()
 
     def weight_calculation(self, i, n, weight):

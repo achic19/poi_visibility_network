@@ -34,13 +34,13 @@ from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 # from .resources import *
+from .resources import *
 sys.path.append(os.path.dirname(__file__))
 from .work_folder.fix_geometry.QGIS import *
 from .work_folder.mean_close_point.mean_close_point import *
 from .work_folder.POI.merge_points import *
 from .create_sight_line import *
 from plugins.processing.algs.qgis.LinesToPolygons import *
-from .resources import *
 
 
 class PoiVisibilityNetwork:
@@ -81,6 +81,10 @@ class PoiVisibilityNetwork:
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
+        # This flag manages what to run: all - 1, run with points layers -2, create visibility sight lines - 3
+        # create point layers to perform latter create visibility sight lines
+        self.processing_option = 1
+
         # Specific code for this plugin
         self.graph_to_draw = 'ivg'
         self.dlg.pushButton.clicked.connect(self.select_output_folder)
@@ -89,9 +93,9 @@ class PoiVisibilityNetwork:
         self.dlg.radioButton_6.toggled.connect(self.select_poi_graph)
 
         # Listen for type of processing
-        self.dlg.radioButton.toggled.connect(1)
-        self.dlg.radioButton_2.toggled.connect(2)
-        self.dlg.radioButton_3.toggled.connect(3)
+        self.dlg.radioButton_2.toggled.connect(self.run_all)
+        self.dlg.radioButton.toggled.connect(self.run_with_pnt_layer)
+        self.dlg.radioButton_3.toggled.connect(self.create_pnt_layer)
 
         self.filename = os.path.join(os.path.dirname(__file__), 'results')
         self.layer_list = []
@@ -236,24 +240,47 @@ class PoiVisibilityNetwork:
         self.graph_to_draw = 'ivg'
         # 1
 
-    def switch(self, value):
+    # The next four functions menage which button to en/unable
+    def run_all(self):
+        self.processing_option = 1
+        self.select_what_to_perform()
+
+    def run_with_pnt_layer(self):
+        self.processing_option = 2
+        self.select_what_to_perform()
+
+    def create_pnt_layer(self):
+        self.processing_option = 3
+        self.select_what_to_perform()
+
+    def select_what_to_perform(self):
         flag_streets = True
-        if value == 2:
+        if self.processing_option == 2:
             flag_streets = False
-        #  Create Visibility Graph
 
-        # self.dlg.radioButton_4.setEnabeld(flag_streets)
-        # self.dlg.radioButton_5.setEnabeld(flag_streets)
-        # self.dlg.radioButton_6.setEnabeld(flag_streets)
+        # # #  Create Visibility Graph
+        # self.dlg.groupBox_2.enabled = False
+        self.dlg.groupBox_2.setEnabled(flag_streets)
 
-        #  Input Layers
+        # #Input Layers
         self.dlg.comboBox_1.setEnabled(flag_streets)
-        self.dlg.comboBox_2.setEnabled(flag_streets)
-        self.dlg.comboBox_3.setEnabled(flag_streets)
+        self.dlg.label.setEnabled(flag_streets)
+        if self.processing_option == 2:
+            self.dlg.label_4.setText('Select points layer')
+        else:
+            self.dlg.label_4.setText('Select  POI')
 
-        # Distance Options
+        # # Distance Options
         self.dlg.checkBox_3.setEnabled(flag_streets)
         self.dlg.lineEdit_3.setEnabled(flag_streets)
+        if self.processing_option == 3:
+            self.dlg.checkBox_2.setEnabled(False)
+            self.dlg.checkBox.setEnabled(False)
+            self.dlg.lineEdit_2.setEnabled(False)
+        else:
+            self.dlg.checkBox_2.setEnabled(True)
+            self.dlg.checkBox.setEnabled(True)
+            self.dlg.lineEdit_2.setEnabled(True)
 
     def papulate_comboList(self, geometry_type):
         '''
@@ -395,75 +422,91 @@ class PoiVisibilityNetwork:
         '''
         # In case of constrain as polyline file and network involve POI, the polyline file should convert to
         # to polygon file
-        if constrains_gis.geometryType() == 1 and self.graph_to_draw in ['ivg', 'poi']:
-            feedback = QgsProcessingFeedback()
-            output = os.path.join(os.path.dirname(__file__), r'work_folder/input/building_1.shp')
-            alg = LinesToPolygons()
-            alg.initAlgorithm()
-            context = QgsProcessingContext()
-            params = {'INPUT': constrains_gis, 'OUTPUT': output}
-            alg.processAlgorithm(params, context, feedback=feedback)
-            constrains_temp = output
+        if self.processing_option != 2:  # don't run in case processing 2 is selected by the user
+            if constrains_gis.geometryType() == 1 and self.graph_to_draw in ['ivg', 'poi']:
+                feedback = QgsProcessingFeedback()
+                output = os.path.join(os.path.dirname(__file__), r'work_folder/input/building_1.shp')
+                alg = LinesToPolygons()
+                alg.initAlgorithm()
+                context = QgsProcessingContext()
+                params = {'INPUT': constrains_gis, 'OUTPUT': output}
+                alg.processAlgorithm(params, context, feedback=feedback)
+                constrains_temp = output
         # #  Reproject layers files
-        SightLine.reproject([network_temp, constrains_temp, poi_temp])
+        if self.processing_option != 2:
+            SightLine.reproject([network_temp, constrains_temp, poi_temp])
+        else:
+            SightLine.reproject([constrains_temp, poi_temp])
 
         # Define intersections only between more than 2 lines return dissolve_0
-        network = os.path.join(os.path.dirname(__file__), r'work_folder\general\networks.shp')
-        myQGIS(network, "_lines")
-        network_new = os.path.join(os.path.dirname(__file__), r'work_folder\fix_geometry\results_file\dissolve_0.shp')
-
-        # Create sight_line instance success
         constrains = os.path.join(os.path.dirname(__file__), r'work_folder\general\constrains.shp')
-        my_sight_line = SightLine(network_new, constrains, res_folder, NULL)
+        if self.processing_option != 2:
+            network = os.path.join(os.path.dirname(__file__), r'work_folder\general\networks.shp')
+            myQGIS(network, "_lines")
+            network_new = os.path.join(os.path.dirname(__file__),
+                                       r'work_folder\fix_geometry\results_file\dissolve_0.shp')
 
-        # Don't run in case of POI graph
-        if self.graph_to_draw in ['ivg', 'snvg']:
-            # Find intersections success
-            my_sight_line.intersections_points()
-            my_sight_line.delete_duplicate_geometries()
+            # Create sight_line instance success
+            my_sight_line = SightLine(network_new, constrains, res_folder, NULL)
 
-            # Calculate mean for close points, Finish with mean_close_coor.shp
-            my_sight_line.turning_points()
-            MeanClosePoint(aggr_dist)
-            my_sight_line.delete_duplicate_geometries()
+            # Don't run in case of POI graph
+            if self.graph_to_draw in ['ivg', 'snvg']:
+                # Find intersections success
+                my_sight_line.intersections_points()
+                my_sight_line.delete_duplicate_geometries()
 
-        if self.graph_to_draw in ['ivg', 'poi']:
-            # Merge all the visibility POI's and intersections
-            #  to one file and project POI points outside polygons ,
-            # Finish with final.shp
-            poi_path = os.path.join(os.path.dirname(__file__), r'work_folder\general\pois.shp')
-            # In a case of POI as polygon or polyline  centralized the layer
-            if not poi.geometryType() == 0:
-                poi_path = SightLine.centerlized()
+                # Calculate mean for close points, Finish with mean_close_coor.shp
+                my_sight_line.turning_points()
+                MeanClosePoint(aggr_dist)
+                my_sight_line.delete_duplicate_geometries()
 
-            if self.graph_to_draw == 'poi':
-                MergePoint(poi_path)
+            if self.graph_to_draw in ['ivg', 'poi']:
+                # Merge all the visibility POI's and intersections
+                #  to one file and project POI points outside polygons ,
+                # Finish with final.shp
+                poi_path = os.path.join(os.path.dirname(__file__), r'work_folder\general\pois.shp')
+                # In a case of POI as polygon or polyline  centralized the layer
+                if not poi.geometryType() == 0:
+                    poi_path = SightLine.centerlized()
+
+                if self.graph_to_draw == 'poi':
+                    MergePoint(poi_path)
+                else:
+                    MergePoint(poi_path, graph_type=1)
+                final = os.path.join(os.path.dirname(__file__), r'work_folder\POI\results_file\final.shp')
             else:
-                MergePoint(poi_path, graph_type=1)
-            final = os.path.join(os.path.dirname(__file__), r'work_folder\POI\results_file\final.shp')
-        else:
-
-            final = os.path.join(os.path.dirname(__file__), r'work_folder\mean_close_point\results_file\final.shp')
+                final = os.path.join(os.path.dirname(__file__), r'work_folder\mean_close_point\results_file\final.shp')
 
         # Calc sight lines
+        if self.processing_option == 1:
+            my_sight_line.create_sight_lines_pot(final, restricted=restricted
+                                                 , restricted_length=restricted_length)
 
-        my_sight_line.create_sight_lines_pot(final, restricted=restricted
-                                             , restricted_length=restricted_length)
-
-        my_sight_line.find_sight_line()
+        # calc sight lines directly from the user input ( after projection)
+        elif self.processing_option == 2:
+            my_sight_line = SightLine(constrains=constrains, res_folder=res_folder, project=NULL)
+            final = os.path.join(os.path.dirname(__file__), r'work_folder\general\pois.shp')
+            my_sight_line.create_sight_lines_pot(final, restricted=restricted
+                                                 , restricted_length=restricted_length)
+        if self.processing_option != 3:
+            my_sight_line.find_sight_line()
         # copy sight nodes file to result folder
         my_sight_line.copy_shape_file_to_result_file(final, 'sight_node')
         # Add  new fields that store information about points type and id point
         path_node = os.path.join(res_folder, 'sight_node.shp')
-        sight_line = os.path.join(res_folder, 'sight_line.shp')
+        if self.processing_option != 3:
+            sight_line = os.path.join(res_folder, 'sight_line.shp')
+            sight_lines = QgsVectorLayer(
+                sight_line,
+                "sight_line",
+                "ogr")
+
         nodes = QgsVectorLayer(
             path_node,
             "nodes",
             "ogr")
-        sight_lines = QgsVectorLayer(
-            sight_line,
-            "sight_line",
-            "ogr")
+
+        # update Point ID if needed
         if nodes.fields()[len(nodes.fields()) - 1].name() != 'point_id':
             nodes.dataProvider().addAttributes(
                 [QgsField('poi_type', QVariant.String), QgsField('point_id', QVariant.Int)])
@@ -472,69 +515,79 @@ class PoiVisibilityNetwork:
         for i, feature in enumerate(nodes.getFeatures()):
             nodes.dataProvider().changeAttributeValues({i: {n - 1: i}})
 
-        if self.graph_to_draw == 'ivg':
-            for i, feature in enumerate(nodes.getFeatures()):
-                if str(feature['InputID']) is 'NULL':
-                    nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
-                else:
+        if self.processing_option != 2:
+            if self.graph_to_draw == 'ivg':
+                for i, feature in enumerate(nodes.getFeatures()):
+                    if str(feature['InputID']) is 'NULL':
+                        nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
+                    else:
+                        nodes.dataProvider().changeAttributeValues({i: {n - 2: 'intersection'}})
+            if self.graph_to_draw == 'snvg':
+                for i, feature in enumerate(nodes.getFeatures()):
                     nodes.dataProvider().changeAttributeValues({i: {n - 2: 'intersection'}})
-        if self.graph_to_draw == 'snvg':
-            for i, feature in enumerate(nodes.getFeatures()):
-                nodes.dataProvider().changeAttributeValues({i: {n - 2: 'intersection'}})
-        elif self.graph_to_draw == 'poi':
-            for i, feature in enumerate(nodes.getFeatures()):
-                nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
+            elif self.graph_to_draw == 'poi':
+                for i, feature in enumerate(nodes.getFeatures()):
+                    nodes.dataProvider().changeAttributeValues({i: {n - 2: 'POI'}})
 
         # create gdf file and update weight and length fields
         my_sight_line.layers[0] = nodes
-        my_sight_line.layers[1] = sight_lines
-        my_sight_line.create_gdf_file(weight=weight, graph_name=self.graph_to_draw)
+        if self.processing_option != 3:
+            my_sight_line.layers[1] = sight_lines
+        my_sight_line.create_gdf_file(weight=weight, graph_name=self.graph_to_draw,
+                                      is_sight_line=self.processing_option)
 
         # Add sight lines and node to project
 
         layer = self.iface.addVectorLayer(path_node, " ", "ogr")
-        self.iface.addVectorLayer(sight_line, " ", "ogr")
+        if self.processing_option != 3:
+            self.iface.addVectorLayer(sight_line, " ", "ogr")
 
         # Update symbology for the layers being upload to Qgis project
-        if self.graph_to_draw == 'ivg':
+        if self.processing_option != 2:
+            if self.graph_to_draw == 'ivg':
 
-            # define some rules: label, expression, symbol
-            symbol_rules = (
-                ('POI', '"InputID" is NULL', 'red', 4),
-                ('Intersetions', '"InputID" is not NULL', 'blue', 2),
-            )
+                # define some rules: label, expression, symbol
+                symbol_rules = (
+                    ('POI', '"InputID" is NULL', 'red', 4),
+                    ('Intersetions', '"InputID" is not NULL', 'blue', 2),
+                )
 
-            # create a new rule-based renderer
-            symbol = QgsSymbol.defaultSymbol(layer.geometryType())
-            renderer = QgsRuleBasedRenderer(symbol)
+                # create a new rule-based renderer
+                symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+                renderer = QgsRuleBasedRenderer(symbol)
 
-            # get the "root" rule
-            root_rule = renderer.rootRule()
+                # get the "root" rule
+                root_rule = renderer.rootRule()
 
-            for label, expression, color_name, size in symbol_rules:
-                # create a clone (i.e. a copy) of the default rule
-                rule = root_rule.children()[0].clone()
-                # set the label, expression and color
-                rule.setLabel(label)
-                rule.setFilterExpression(expression)
-                rule.symbol().setColor(QColor(color_name))
-                rule.symbol().setSize(size)
-                # append the rule to the list of rules
-                root_rule.appendChild(rule)
+                for label, expression, color_name, size in symbol_rules:
+                    # create a clone (i.e. a copy) of the default rule
+                    rule = root_rule.children()[0].clone()
+                    # set the label, expression and color
+                    rule.setLabel(label)
+                    rule.setFilterExpression(expression)
+                    rule.symbol().setColor(QColor(color_name))
+                    rule.symbol().setSize(size)
+                    # append the rule to the list of rules
+                    root_rule.appendChild(rule)
 
-            # delete the default rule
-            root_rule.removeChildAt(0)
+                # delete the default rule
+                root_rule.removeChildAt(0)
 
-        if self.graph_to_draw == 'snvg':
-            symbol_1 = QgsMarkerSymbol.createSimple({'size': '2.0',
-                                                     'color': 'blue'})
+            if self.graph_to_draw == 'snvg':
+                symbol_1 = QgsMarkerSymbol.createSimple({'size': '2.0',
+                                                         'color': 'blue'})
 
-            renderer = QgsSingleSymbolRenderer(symbol_1)
+                renderer = QgsSingleSymbolRenderer(symbol_1)
 
-        elif self.graph_to_draw == 'poi':
+            elif self.graph_to_draw == 'poi':
+                symbol_1 = QgsMarkerSymbol.createSimple({'size': '4.0',
+                                                         'color': 'red'})
+
+                renderer = QgsSingleSymbolRenderer(symbol_1)
+        else:
             symbol_1 = QgsMarkerSymbol.createSimple({'size': '4.0',
                                                      'color': 'red'})
 
-            renderer = QgsSingleSymbolRenderer(symbol_1)
+        renderer = QgsSingleSymbolRenderer(symbol_1)
         # apply the renderer to the layer
         layer.setRenderer(renderer)

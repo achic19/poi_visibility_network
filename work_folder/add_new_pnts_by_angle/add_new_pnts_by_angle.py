@@ -54,6 +54,7 @@ if __name__ == "__main__":
     lines = upload_new_layer(split_with_lines, "lines")
     temp_list = []
 
+
     # calculate azimuth and save points with azimuth larger than 30 degrees
     for feature in lines.getFeatures():
         feature_list = feature.geometry().asJson()
@@ -76,11 +77,13 @@ if __name__ == "__main__":
                 if angleB > 360:
                     angleB = angleB - 360
                 if abs(angleB - 180) > 30:
+                    feat = QgsFeature()
+                    point = QgsPointXY(x2, y2)
+                    g_pnt = QgsGeometry.fromPointXY(point)
+                    feat.setGeometry(g_pnt)
+                    temp_list.append(feat)
                     print(abs(angleB - 180))
-                    temp_list.append(cor_set[i+1])
 
-    df = pd.DataFrame(temp_list, columns=['x', 'y'])
-    df.to_csv('test.csv')
 
     """For standalone application"""
     # Exit applications
