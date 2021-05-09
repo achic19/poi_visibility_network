@@ -34,8 +34,8 @@ from .poi_visibility_network_dialog import PoiVisibilityNetworkDialog
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 # from .resources import *
-from .resources import *
 sys.path.append(os.path.dirname(__file__))
+from .resources import *
 from .work_folder.fix_geometry.QGIS import *
 from .work_folder.mean_close_point.mean_close_point import *
 from .work_folder.POI.merge_points import *
@@ -226,17 +226,26 @@ class PoiVisibilityNetwork:
     def select_snvg_graph(self):
 
         self.dlg.comboBox_3.setEnabled(False)
+        # Unable aggregation distance
+        self.dlg.checkBox_3.setEnabled(True)
+        self.dlg.lineEdit_3.setEnabled(True)
         self.graph_to_draw = 'snvg'
         # 2
 
     def select_poi_graph(self):
 
         self.dlg.comboBox_3.setEnabled(True)
+        # Unable aggregation distance
+        self.dlg.checkBox_3.setEnabled(False)
+        self.dlg.lineEdit_3.setEnabled(False)
         self.graph_to_draw = 'poi'
         # 3
 
     def select_ivg_graph(self):
         self.dlg.comboBox_3.setEnabled(True)
+        # Unable aggregation distance
+        self.dlg.checkBox_3.setEnabled(True)
+        self.dlg.lineEdit_3.setEnabled(True)
         self.graph_to_draw = 'ivg'
         # 1
 
@@ -434,7 +443,7 @@ class PoiVisibilityNetwork:
                 constrains_temp = output
         # #  Reproject layers files
         if self.processing_option != 2:
-            SightLine.reproject([network_temp, constrains_temp, poi_temp])
+            SightLine.reproject([constrains_temp, poi_temp, network_temp])
         else:
             SightLine.reproject([constrains_temp, poi_temp])
 
@@ -537,13 +546,12 @@ class PoiVisibilityNetwork:
                                       is_sight_line=self.processing_option)
 
         # Add sight lines and node to project
-
-        layer = self.iface.addVectorLayer(path_node, " ", "ogr")
         if self.processing_option != 3:
             self.iface.addVectorLayer(sight_line, " ", "ogr")
 
         # Update symbology for the layers being upload to Qgis project
         if self.processing_option != 2:
+            layer = self.iface.addVectorLayer(path_node, " ", "ogr")
             if self.graph_to_draw == 'ivg':
 
                 # define some rules: label, expression, symbol
@@ -584,10 +592,5 @@ class PoiVisibilityNetwork:
                                                          'color': 'red'})
 
                 renderer = QgsSingleSymbolRenderer(symbol_1)
-        else:
-            symbol_1 = QgsMarkerSymbol.createSimple({'size': '4.0',
-                                                     'color': 'red'})
-
-        renderer = QgsSingleSymbolRenderer(symbol_1)
-        # apply the renderer to the layer
-        layer.setRenderer(renderer)
+                # apply the renderer to the layer
+            layer.setRenderer(renderer)

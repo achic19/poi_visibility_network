@@ -43,7 +43,7 @@ class SightLine:
         self.use = use
 
         # These attributes are input from the user
-        if self.network is not None:
+        if network is not None:
             self.network = self.upload_new_layer(network, "_network")
         self.constrain = self.upload_new_layer(constrains, "_constrain")
         self.feedback = QgsProcessingFeedback()
@@ -55,6 +55,8 @@ class SightLine:
         # layers[0] = intersections
         # layers[1] =  edges
         self.layers = []
+        self.layers.append("intersections")
+        self.layers.append("edges")
         # attributes to create QgsVectorLayer in memory
         self.vl = QgsVectorLayer()
         # QgsVectorDataProvider
@@ -64,7 +66,7 @@ class SightLine:
 
     @staticmethod
     def reproject(layers_to_project_path, target_crs='EPSG:3857',
-                  names_list=['networks', 'constrains', 'pois'], relative_folder='work_folder/general/'):
+                  names_list=['constrains', 'pois','networks'], relative_folder='work_folder/general/'):
         '''
         :param layers_to_project_path: list of layer to project
         :param target_crs: to project
@@ -196,7 +198,7 @@ class SightLine:
         """create lines based on the intersections"""
 
         # Upload intersection layers
-        self.layers.append(self.upload_new_layer(final, "all_pnts"))
+        self.layers[0] = self.upload_new_layer(final, "all_pnts")
         # Save points with python dataset
         junctions_features = self.layers[0].getFeatures()
         # Get the geometry of each element into a list
@@ -243,7 +245,7 @@ class SightLine:
         params = {'INPUT': line_path, 'PREDICATE': [2], 'INTERSECT': intersect,
                   'OUTPUT': sight_line_output}
         self.res = processing.run('native:extractbylocation', params, feedback=self.feedback)
-        self.layers.append(self.upload_new_layer(self.res['OUTPUT'], "_sight_line"))
+        self.layers[1] = self.upload_new_layer(self.res['OUTPUT'], "_sight_line")
 
     def create_gdf_file(self, weight, graph_name, is_sight_line: int):
         """
