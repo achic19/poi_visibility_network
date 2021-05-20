@@ -1,11 +1,11 @@
 # Tell Python where you will get processing from
 import sys
 from operator import itemgetter
-
+import json
 from PyQt5.QtGui import *
 from qgis.core import *
 from shapely.geometry import Point
-from test.test_same_area import test_same_area_grid
+
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 
 
@@ -28,6 +28,8 @@ class SameAreaCell:
         self.size_cell = size
         self.x_min = min(points_list, key=itemgetter(0))[0]
         self.y_min = min(points_list, key=itemgetter(1))[1]
+        self.x_max = max(points_list, key=itemgetter(0))[0]
+        self.y_max = max(points_list, key=itemgetter(1))[1]
         n_y = int((max(points_list, key=itemgetter(1))[1] - self.y_min) / self.size_cell) + 1
         n_x = int((max(points_list, key=itemgetter(0))[0] - self.x_min) / self.size_cell) + 1
         self.data_set = [[Cell() for i in range(n_x)] for j in range(n_y)]
@@ -63,10 +65,10 @@ if __name__ == "__main__":
     QgsApplication.setPrefixPath(r'C:\Program Files\QGIS 3.0\apps\qgis', True)
     QgsApplication.initQgis()
 
-    input_in = 'work_folder/general/intersections.shp'
     input_constrains = 'work_folder/general/constrains.shp'
+    input_in = 'work_folder/general/intersections.shp'
 
-    input_layers = [upload_new_layer(input_in, 'file'), upload_new_layer(input_constrains, 'file')]
+    input_layers = [upload_new_layer(input_constrains, 'file'), upload_new_layer(input_in, 'file')]
 
     # Get  the layers' rectangle extent
     rectangle_points = []
@@ -78,9 +80,16 @@ if __name__ == "__main__":
     # Build SameAreaCell object
     geo_data_base = SameAreaCell(rectangle_points, 100)
 
-    # Test
-    test_same_area_grid([extent.xMinimum(), extent.xMaximum(), extent.yMinimum(), extent.yMaximum()], 100,
-                        input_layer.crs().authid())
+    # Build an grid layer (test)
+    # test_same_area_grid([geo_data_base.x_min, geo_data_base.x_max, geo_data_base.y_min, geo_data_base.y_max],
+    #                     geo_data_base.size_cell)
+
+    # Print the points polygon
+    for feature in input_layers[0].getFeatures():
+        feature_list = feature.geometry().asJson()
+        json1_data = json.loads(feature_list)['coordinates']
+        for cor_set in json1_data:
+            geo_data_base.add_point(cor_set)
     """For standalone application"""
     # Exit applications
     QgsApplication.exitQgis()
