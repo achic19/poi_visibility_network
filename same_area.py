@@ -1,14 +1,15 @@
 # Tell Python where you will get processing from
 import json
+import os
 import sys
 from operator import itemgetter
-import os
+
 from PyQt5.QtGui import *
+# from test.test_same_area import test_same_area_grid
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import *
 from shapely.geometry import Point
 
-# from test.test_same_area import test_same_area_grid
-from qgis.PyQt.QtCore import QVariant
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 
 
@@ -16,12 +17,12 @@ sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 
 
 class Cell:
-    def __init__(self, x, y, spacing):
+    def __init__(self, x, y, spacing, i_x, i_y):
         self.points = []
-        self.point1 = QgsPointXY(x, y)
-        self.point2 = QgsPointXY(x + spacing, y)
-        self.point3 = QgsPointXY(x + spacing, y + spacing)
-        self.point4 = QgsPointXY(x, y + spacing)
+        self.extent = {'x_y': QgsPointXY(x, y), 'x_max_y': QgsPointXY(x + spacing, y),
+                       'x_max_y_max': QgsPointXY(x + spacing, y + spacing), 'x_y_max': QgsPointXY(x, y + spacing)}
+        self.i_e = i_x
+        self.i_n = i_y
 
 
 class SameAreaCell:
@@ -38,12 +39,11 @@ class SameAreaCell:
         self.x_max = max(points_list, key=itemgetter(0))[0]
         self.y_max = max(points_list, key=itemgetter(1))[1]
 
-        n_y = int((max(points_list, key=itemgetter(1))[1] - self.y_min) / self.size_cell) + 1
-        n_x = int((max(points_list, key=itemgetter(0))[0] - self.x_min) / self.size_cell) + 1
+        n_y = int((self.y_max - self.y_min) / self.size_cell) + 1
+        n_x = int((self.x_max - self.x_min) / self.size_cell) + 1
         self.data_set = [
-            [Cell(self.x_min + i * self.size_cell, self.y_min + j * self.size_cell, self.size_cell) for i in range(n_x)]
-            for j in range(n_y)]
-        test = 0
+            [Cell(self.x_min + ii * self.size_cell, self.y_min + j * self.size_cell, self.size_cell, ii, j) for ii in
+             range(n_x)] for j in range(n_y)]
         # self.data_set = np.empty((n_x, n_y), dtype=object)
         # self.data_set[:, :] = Cell()
         # for pnt in points_list:
@@ -73,13 +73,26 @@ class SameAreaCell:
         prov = vector_grid.dataProvider()
 
         # Add ids and coordinates fields
-        fields = QgsFields()
-        fields.append(QgsField('id_north', QVariant.Int, '', 10, 0))
-        fields.append(QgsField('id_east', QVariant.Int, '', 10, 0))
-        # for cell_row in self.data_set:
-        #     for cell in cell_row:
+        if vector_grid.fields()[-1].name() != 'num_of_pnt':
+            fields = QgsFields()
+            fields.append(QgsField('id_east', QVariant.Int, '', 20, 0))
+            fields.append(QgsField('id_north', QVariant.Int, '', 20, 0))
+            fields.append(QgsField('num_of_pnt', QVariant.Int, '', 20, 0))
+            prov.addAttributes(fields)
+        id = 0
+        for cell_row in self.data_set:
+            for cell in cell_row:
+                feat = QgsFeature()
+                feat.setGeometry(
+                    QgsGeometry().fromPolygonXY([list(cell.extent.values())]))  # Set geometry for the current id
+                print(list(cell.extent.values()))
+                feat.setAttributes([id, cell.i_e, cell.i_n, len(cell.points)])  # Set attributes for the current id
+                print('{},{} :{}'.format(cell.i_e, cell.i_n, len(cell.points)))
+                prov.addFeatures([feat])
+                id += 1
+        # Update fields for the vector grid
+        vector_grid.updateFields()
 
-        # for cell in self.
 
 def upload_new_layer(path, name):
     """Upload shp layers"""
@@ -119,10 +132,13 @@ if __name__ == "__main__":
     # Print the points polygon
     for feature in input_layers[0].getFeatures():
         feature_list = feature.geometry().asJson()
+        attribute= feature.attributes()[0]
         json1_data = json.loads(feature_list)['coordinates']
         for cor_set in json1_data[0]:
-            for i in range(1, len(cor_set) - 1):
+            for i in range(0, len(cor_set) - 1):
                 geo_data_base.add_point(Point(cor_set[i][0], cor_set[i][1]))
+
+    geo_data_base.create_grid_shapefile()
     """For standalone application"""
     # Exit applications
     QgsApplication.exitQgis()
