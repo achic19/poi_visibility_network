@@ -15,6 +15,32 @@ sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 
 # Reference the algorithm you want to run
 
+class PolygonPoint(Point):
+    """
+    The class store the point and the equation_params to the previous and next points based on their order
+     in the polygon
+    """
+
+    def __init__(self, **kwargs):
+        print(kwargs)
+        super().__init__(kwargs['pnt'][0], kwargs['pnt'][1])
+        self.eq_params_pre = self.calc_equation_params(kwargs['pre_pnt'][0], kwargs['pre_pnt'][1])
+        self.eq_params_ne = self.calc_equation_params(kwargs['nxt_pnt'][0], kwargs['nxt_pnt'][1])
+
+    def calc_equation_params(self, x_1, y_1):
+        """
+        The method return the equation_params(slope and distance) from two points (the object points and another
+        given points)
+        :param x_1:
+        :param y_1:
+        :return:
+        """
+        slope = (y_1 - self.y) / (x_1 - self.x)
+        intersect = self.y - self.x * slope
+        print([slope, intersect])
+        print([slope, intersect])
+        return [slope, intersect]
+
 
 class Cell:
     def __init__(self, x, y, spacing, i_x, i_y):
@@ -44,15 +70,12 @@ class SameAreaCell:
         self.data_set = [
             [Cell(self.x_min + ii * self.size_cell, self.y_min + j * self.size_cell, self.size_cell, ii, j) for ii in
              range(n_x)] for j in range(n_y)]
-        # self.data_set = np.empty((n_x, n_y), dtype=object)
-        # self.data_set[:, :] = Cell()
-        # for pnt in points_list:
-        #     self.add_point(Point(pnt[0], pnt[1]))
 
-    def add_point(self, pnt):
+    def add_point(self, pnt: PolygonPoint):
+
         in_x = int((pnt.x - self.x_min) / self.size_cell)
         in_y = int((pnt.y - self.y_min) / self.size_cell)
-        self.data_set[in_y][in_x].points.append(Point(pnt))
+        self.data_set[in_y][in_x].points.append(pnt)
 
     def find_cell(self, pnt):
         in_x = int((pnt.x - self.x_min) / self.size_cell)
@@ -79,17 +102,17 @@ class SameAreaCell:
             fields.append(QgsField('id_north', QVariant.Int, '', 20, 0))
             fields.append(QgsField('num_of_pnt', QVariant.Int, '', 20, 0))
             prov.addAttributes(fields)
-        id = 0
+        my_id = 0
         for cell_row in self.data_set:
             for cell in cell_row:
                 feat = QgsFeature()
                 feat.setGeometry(
                     QgsGeometry().fromPolygonXY([list(cell.extent.values())]))  # Set geometry for the current id
                 print(list(cell.extent.values()))
-                feat.setAttributes([id, cell.i_e, cell.i_n, len(cell.points)])  # Set attributes for the current id
+                feat.setAttributes([my_id, cell.i_e, cell.i_n, len(cell.points)])  # Set attributes for the current id
                 print('{},{} :{}'.format(cell.i_e, cell.i_n, len(cell.points)))
                 prov.addFeatures([feat])
-                id += 1
+                my_id += 1
         # Update fields for the vector grid
         vector_grid.updateFields()
 
@@ -132,13 +155,16 @@ if __name__ == "__main__":
     # Print the points polygon
     for feature in input_layers[0].getFeatures():
         feature_list = feature.geometry().asJson()
-        attribute= feature.attributes()[0]
+        attribute = feature.attributes()[0]
         json1_data = json.loads(feature_list)['coordinates']
-        for cor_set in json1_data[0]:
-            for i in range(0, len(cor_set) - 1):
-                geo_data_base.add_point(Point(cor_set[i][0], cor_set[i][1]))
+        cor_sets = json1_data[0][0]
+        # Next row is for adding the line equations for the previous and next points latter
+        cor_sets.insert(0, cor_sets[-2])
+        for cor_set in cor_sets:
+            for i in range(1, len(cor_set) - 1):
+                geo_data_base.add_point(PolygonPoint(pnt=cor_set[i], pre_pnt=cor_set[i - 1], nxt_pnt=cor_set[i + 1]))
 
-    geo_data_base.create_grid_shapefile()
+    # geo_data_base.create_grid_shapefile()
     """For standalone application"""
     # Exit applications
     QgsApplication.exitQgis()
