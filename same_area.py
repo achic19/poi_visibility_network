@@ -38,7 +38,6 @@ class PolygonPoint(Point):
         slope = (y_1 - self.y) / (x_1 - self.x)
         intersect = self.y - self.x * slope
         print([slope, intersect])
-        print([slope, intersect])
         return [slope, intersect]
 
 
@@ -157,12 +156,15 @@ if __name__ == "__main__":
         feature_list = feature.geometry().asJson()
         attribute = feature.attributes()[0]
         json1_data = json.loads(feature_list)['coordinates']
-        cor_sets = json1_data[0][0]
+        cor_sets = json1_data[0]
         # Next row is for adding the line equations for the previous and next points latter
-        cor_sets.insert(0, cor_sets[-2])
         for cor_set in cor_sets:
+            cor_set.insert(0, cor_set[-2])
             for i in range(1, len(cor_set) - 1):
-                geo_data_base.add_point(PolygonPoint(pnt=cor_set[i], pre_pnt=cor_set[i - 1], nxt_pnt=cor_set[i + 1]))
+                try:
+                    geo_data_base.add_point(PolygonPoint(pnt=cor_set[i], pre_pnt=cor_set[i - 1], nxt_pnt=cor_set[i + 1]))
+                except:
+                    pass
 
     # geo_data_base.create_grid_shapefile()
     """For standalone application"""

@@ -10,11 +10,14 @@ from qgis.core import *
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.4\apps\qgis-ltr\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.10\apps\qgis-ltr\python\plugins')
+sys.path.append(r'C:\Program Files\QGIS 3.16\apps\qgis-ltr\python\plugins')
 # Reference the algorithm you want to run
 from plugins import processing
-from plugins.processing.algs.qgis.DeleteDuplicateGeometries import *
-from plugins.processing.algs.qgis.PointDistance import *
 
+from plugins.processing.algs.qgis.PointDistance import *
+inty = int(Qgis.QGIS_VERSION.split('-')[0].split('.')[1])
+if inty < 16:
+    from plugins.processing.algs.qgis.DeleteDuplicateGeometries import *
 
 # This 2 following defs intend to calculate distance matrix with point to herself
 
@@ -158,12 +161,14 @@ class MeanClosePoint:
         my_input = os.path.join(os.path.dirname(__file__), r'results_file\single_part.shp')
 
         output = os.path.join(os.path.dirname(__file__), r'results_file\cleaned.shp')
-
-        alg = DeleteDuplicateGeometries()
-        alg.initAlgorithm()
-        context = QgsProcessingContext()
         params = {'INPUT': my_input, 'OUTPUT': output}
-        alg.processAlgorithm(params, context, feedback=feedback)
+        if inty < 16:
+            alg = DeleteDuplicateGeometries()
+            alg.initAlgorithm()
+            context = QgsProcessingContext()
+            alg.processAlgorithm(params, context, feedback=feedback)
+        else:
+            processing.run("native:deleteduplicategeometries", params,feedback=feedback)
 
         """ implement Mean coordinates"""
 

@@ -12,12 +12,13 @@ from qgis.core import (QgsProcessingContext,
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.4\apps\qgis-ltr\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.10\apps\qgis-ltr\python\plugins')
+sys.path.append(r'C:\Program Files\QGIS 3.16\apps\qgis-ltr\python\plugins')
+
 # Reference the algorithm you want to run
 from plugins import processing
 # Reference the algorithm you want to run
 
 from plugins.processing.algs.qgis.HubDistanceLines import HubDistanceLines
-from plugins.processing.algs.qgis.DeleteDuplicateGeometries import DeleteDuplicateGeometries
 import time
 
 
@@ -40,9 +41,7 @@ class MergePoint:
         inty = int(Qgis.QGIS_VERSION.split('-')[0].split('.')[1])
         # Clip to project only POI in polygons
         processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [0],
-                                                        'INTERSECT': overlay, 'OUTPUT': output_clip}, feedback=feedback)
-
-
+                                                    'INTERSECT': overlay, 'OUTPUT': output_clip}, feedback=feedback)
 
         ######### Create shp file with POI not inside polygons
         processing.run('native:extractbylocation', {'INPUT': poi_path, 'PREDICATE': [2], 'INTERSECT': os.path.join(
@@ -81,14 +80,13 @@ class MergePoint:
         params = {'INPUT': input_path, 'HUBS': hubs_path, 'FIELD': 'angle', 'UNIT': 4, 'OUTPUT': output_hub_dis_line}
         alg.processAlgorithm(params, context, feedback=feedback)
 
-
         ########## Buffer over constrain layer
         constrains = overlay
         buffer = os.path.join(os.path.dirname(__file__), "results_file/buffer.shp")
 
         params = {'INPUT': constrains, 'DISTANCE': 1, 'SEGMENTS': 1, 'END_CAP_STYLE': 2,
-              'JOIN_STYLE': 1, 'MITER_LIMIT': 2,
-              'DISSOLVE': True, 'OUTPUT': buffer}
+                  'JOIN_STYLE': 1, 'MITER_LIMIT': 2,
+                  'DISSOLVE': True, 'OUTPUT': buffer}
 
         processing.run('native:buffer', params, feedback=feedback)
 
@@ -129,14 +127,15 @@ class MergePoint:
 
         ##########Delete duplicate geomeyry
         input = OUTPUT
-
         OUTPUT = os.path.join(os.path.dirname(__file__), r'results_file\final.shp')
-
-        alg = DeleteDuplicateGeometries()
-        alg.initAlgorithm()
         params = {'INPUT': input, 'OUTPUT': OUTPUT}
-        alg.processAlgorithm(params, context, feedback=feedback)
-       
+        if inty < 16:
+            from plugins.processing.algs.qgis.DeleteDuplicateGeometries import DeleteDuplicateGeometries
+            alg = DeleteDuplicateGeometries()
+            alg.initAlgorithm()
+            alg.processAlgorithm(params, context, feedback=feedback)
+        else:
+            processing.run("native:deleteduplicategeometries", params, feedback=feedback)
 
     def upload_new_layer(self, path, name):
         """Upload shp layers"""

@@ -14,9 +14,13 @@ from qgis.core import *
 sys.path.append(r'C:\Program Files\QGIS 3.0\apps\qgis\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.4\apps\qgis-ltr\python\plugins')
 sys.path.append(r'C:\Program Files\QGIS 3.10\apps\qgis-ltr\python\plugins')
+sys.path.append(r'C:\Program Files\QGIS 3.16\apps\qgis-ltr\python\plugins')
 # Reference the algorithm you want to run
 from plugins import processing
-from plugins.processing.algs.qgis.DeleteDuplicateGeometries import *
+
+inty = int(Qgis.QGIS_VERSION.split('-')[0].split('.')[1])
+if inty < 16:
+    from plugins.processing.algs.qgis.DeleteDuplicateGeometries import *
 
 
 class SightLine:
@@ -115,12 +119,17 @@ class SightLine:
     def delete_duplicate_geometries(self):
         """Delete duplicate geometries in intesections_0 layer"""
         try:
-            alg = DeleteDuplicateGeometries()
-            alg.initAlgorithm()
-            context = QgsProcessingContext()
-            params = {'INPUT': self.junc_loc_0,
-                      'OUTPUT': os.path.dirname(__file__) + r'\work_folder\general\intersections_1.shp'}
-            self.res = alg.processAlgorithm(params, context, feedback=self.feedback)
+            local_input = self.junc_loc_0
+            local_output = os.path.dirname(__file__) + r'\work_folder\general\intersections_1.shp'
+            params = {'INPUT': local_input,
+                      'OUTPUT': local_output}
+            if inty < 16:
+                alg = DeleteDuplicateGeometries()
+                alg.initAlgorithm()
+                context = QgsProcessingContext()
+                self.res = alg.processAlgorithm(params, context, feedback=self.feedback)
+            else:
+                processing.run("native:deleteduplicategeometries", params, feedback=self.feedback)
             print("delete_duplicate_geometries is success")
         except QgsProcessingException:
             pass
