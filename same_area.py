@@ -24,8 +24,9 @@ class PolygonPoint(Point):
     def __init__(self, **kwargs):
         print(kwargs)
         super().__init__(kwargs['pnt'][0], kwargs['pnt'][1])
-        self.eq_params_pre = self.calc_equation_params(kwargs['pre_pnt'][0], kwargs['pre_pnt'][1])
-        self.eq_params_ne = self.calc_equation_params(kwargs['nxt_pnt'][0], kwargs['nxt_pnt'][1])
+
+        # self.eq_params_pre = self.calc_equation_params(kwargs['pre_pnt'][0], kwargs['pre_pnt'][1])
+        # self.eq_params_ne = self.calc_equation_params(kwargs['nxt_pnt'][0], kwargs['nxt_pnt'][1])
 
     def calc_equation_params(self, x_1, y_1):
         """
@@ -159,12 +160,18 @@ if __name__ == "__main__":
         cor_sets = json1_data[0]
         # Next row is for adding the line equations for the previous and next points latter
         for cor_set in cor_sets:
-            cor_set.insert(0, cor_set[-2])
-            for i in range(1, len(cor_set) - 1):
-                try:
-                    geo_data_base.add_point(PolygonPoint(pnt=cor_set[i], pre_pnt=cor_set[i - 1], nxt_pnt=cor_set[i + 1]))
-                except:
-                    pass
+            len_list_no_last = len(cor_set) - 1
+            geo_data_base.add_point(PolygonPoint(pnt=cor_set[0], nxt_pnt=cor_set[1]))
+            for i in range(0, len_list_no_last):
+                if i != 0:
+                    if i == len_list_no_last - 1:
+                        second_point.nexr_pnt = cor_set[0]
+                    second_point.nexr_pnt(cor_set[i + 1])
+                    geo_data_base.add_point(second_point)
+                second_point = PolygonPoint(pnt=cor_set[i + 1], pre_pnt=cor_set[i])
+
+                # elif i == len_list_no_last:
+                #     pass
 
     # geo_data_base.create_grid_shapefile()
     """For standalone application"""
